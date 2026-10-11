@@ -169,7 +169,9 @@ export default function ApartmentsLive({ auth, onNotify }) {
                                   <strong>{u.unitNo}</strong>
                                   <span className="unit-type-pill">
                                     {label(AREA_TYPES, u.areaType)}
+                                    {u.unitType ? ` · ${u.unitType}` : ""}
                                     {u.grossM2 ? ` · ${u.grossM2} m²` : ""}
+                                    {u.landShare ? ` · Arsa: ${u.landShare}` : ""}
                                   </span>
                                 </div>
                               </div>
@@ -526,7 +528,13 @@ function UnitModal({ unit, block, residents, canInvite, onClose, onChanged, onNo
   return (
     <Modal
       title={`${block?.name || ""} · Daire ${unit.unitNo}`}
-      description={[unit.floor != null ? `${unit.floor}. kat` : null, label(AREA_TYPES, unit.areaType), unit.unitType, unit.grossM2 ? `${unit.grossM2} m²` : null]
+      description={[
+        unit.floor != null ? `${unit.floor}. kat` : null,
+        label(AREA_TYPES, unit.areaType),
+        unit.unitType,
+        unit.grossM2 ? `${unit.grossM2} m²` : null,
+        unit.landShare ? `Arsa Payı: ${unit.landShare}` : null,
+      ]
         .filter(Boolean)
         .join(" · ")}
       onClose={onClose}

@@ -32,6 +32,7 @@ export default async function handler(req, res) {
     if (req.headers["content-type"]) forwardHeaders["content-type"] = req.headers["content-type"];
     if (req.headers["authorization"]) forwardHeaders["authorization"] = req.headers["authorization"];
     if (req.headers["accept"]) forwardHeaders["accept"] = req.headers["accept"];
+    if (req.headers["x-xsrf-token"]) forwardHeaders["x-xsrf-token"] = req.headers["x-xsrf-token"];
 
     let bodyData = undefined;
     if (req.method !== "GET" && req.method !== "HEAD") {

@@ -67,14 +67,30 @@ export function onAuthChange(listener) {
   return () => listeners.delete(listener);
 }
 
+/**
+ * #62: CSRF Güvenliği (Token çereze taşındığında otomatik koruma):
+ * Backend veya gateway tarafından bırakılan okunabilir XSRF-TOKEN / CSRF-TOKEN çerezini okur ve
+ * durum değiştiren (POST, PUT, DELETE, PATCH) isteklerde X-XSRF-TOKEN başlığı olarak gönderir.
+ */
+function getCsrfToken() {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)(?:XSRF-TOKEN|CSRF-TOKEN)=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 async function send(method, path, body, token) {
   let response;
+  const csrfToken = getCsrfToken();
+  const isMutating = !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
+
   try {
     response = await fetch(BASE_URL + path, {
       method,
+      credentials: "same-origin",
       headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(csrfToken && isMutating ? { "X-XSRF-TOKEN": csrfToken } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });

@@ -53,7 +53,15 @@ export async function reloadWorkspaces() {
   return getAuth();
 }
 
-export function logout() {
+export async function logout() {
+  const current = getAuth();
+  if (current?.refreshToken) {
+    try {
+      await api("POST", "/auth/logout", { refreshToken: current.refreshToken });
+    } catch {
+      // Sunucuya ulaşılamasa veya oturum zaten geçersiz olsa dahi yerel oturum temizlenir
+    }
+  }
   setAuth(null);
 }
 

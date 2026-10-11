@@ -144,7 +144,11 @@ export default function Payments({
                   {manager && (
                     <td>
                       <strong>{d.unitId}</strong>
-                      <small>{residentName(d.unitId)}</small>
+                      <small>
+                        {residentName(d.unitId)}
+                        {units.find((u) => u.id === d.unitId)?.type ? ` · ${units.find((u) => u.id === d.unitId).type}` : ""}
+                        {units.find((u) => u.id === d.unitId)?.landShare ? ` · Arsa: ${units.find((u) => u.id === d.unitId).landShare}` : ""}
+                      </small>
                     </td>
                   )}
                   <td>
@@ -321,18 +325,11 @@ function AccrualModal({ bulk, units, dues, onClose, onSubmit }) {
   const [amount, setAmount] = useState(2500);
   const [unit, setUnit] = useState(units[0]?.id || "A-1");
   const [title, setTitle] = useState("Site aidatı");
-  const [model, setModel] = useState("type"); // 'type' | 'm2' | 'flat'
+  const [model, setModel] = useState("type"); // 'type' | 'landShare' | 'm2' | 'flat'
   const [m2Rate, setM2Rate] = useState(25);
+  const [totalBudget, setTotalBudget] = useState(75000);
 
-  const targets = units.filter((u) => u.occupied && (bulk || u.id === unit));
-  const eligible = targets.filter(
-    (u) =>
-      !bulk ||
-      !dues.some(
-        (d) =>
-          d.unitId === u.id && d.period === period && d.title?.includes("aidat"),
-      ),
-  );
+  const totalLandShare = units.reduce((acc, u) => acc + (Number(u.landShare) || (u.m2 ? u.m2 / 1000 : 0.04)), 0) || 1;
 
   const calculateUnitAmount = (u) => {
     if (!bulk) return Number(amount);
@@ -340,6 +337,10 @@ function AccrualModal({ bulk, units, dues, onClose, onSubmit }) {
     if (model === "m2") {
       const area = u.m2 || (u.type === "1+0" ? 45 : u.type === "1+1" ? 65 : u.type === "2+0" ? 75 : u.type === "2+1" ? 95 : 120);
       return area * Number(m2Rate || 25);
+    }
+    if (model === "landShare") {
+      const share = Number(u.landShare) || (u.m2 ? u.m2 / 1000 : 0.04);
+      return Math.round((Number(totalBudget) * (share / totalLandShare)) || Number(amount));
     }
     // model === 'type'
     const found = APARTMENT_TYPES.find((t) => t.id === u.type);
@@ -435,7 +436,14 @@ function AccrualModal({ bulk, units, dues, onClose, onSubmit }) {
                   className={model === "type" ? "active" : ""}
                   onClick={() => setModel("type")}
                 >
-                  Daire Tipine Göre (1+0, 1+1, 2+0...)
+                  Daire / Alan Tipi
+                </button>
+                <button
+                  type="button"
+                  className={model === "landShare" ? "active" : ""}
+                  onClick={() => setModel("landShare")}
+                >
+                  Arsa Payı (KMK 20)
                 </button>
                 <button
                   type="button"
@@ -453,6 +461,19 @@ function AccrualModal({ bulk, units, dues, onClose, onSubmit }) {
                 </button>
               </div>
             </div>
+
+            {model === "landShare" && (
+              <Field label="Aylık Toplam İşletme Bütçesi (₺) — Arsa Paylarına Göre Dağıtılır">
+                <input
+                  type="number"
+                  required
+                  min="1000"
+                  step="1000"
+                  value={totalBudget}
+                  onChange={(e) => setTotalBudget(e.target.value)}
+                />
+              </Field>
+            )}
 
             {model === "flat" && (
               <Field label="Daire Başı Sabit Tutar (₺)">

@@ -692,14 +692,21 @@ export default function SiteSettings({
                     className={duesSettings.duesModel === "type" ? "active" : ""}
                     onClick={() => setDuesSettings({ ...duesSettings, duesModel: "type" })}
                   >
-                    Daire Tipine Göre (1+0, 1+1, 2+0...)
+                    Daire / Alan Tipine Göre
+                  </button>
+                  <button
+                    type="button"
+                    className={duesSettings.duesModel === "landShare" ? "active" : ""}
+                    onClick={() => setDuesSettings({ ...duesSettings, duesModel: "landShare" })}
+                  >
+                    Arsa Payına Göre (KMK 20)
                   </button>
                   <button
                     type="button"
                     className={duesSettings.duesModel === "m2" ? "active" : ""}
                     onClick={() => setDuesSettings({ ...duesSettings, duesModel: "m2" })}
                   >
-                    Metrekare (m²) Başına Katsayı
+                    Metrekare (m²) Başına
                   </button>
                 </div>
 

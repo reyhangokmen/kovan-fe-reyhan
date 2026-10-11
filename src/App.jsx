@@ -93,10 +93,30 @@ const MANAGEMENT_PERMISSIONS = ["SITE.AYARLAR", "SITE.BLOK_DAIRE", "KULLANICI.SA
 // Backend'i henüz olmayan modüllerde sakin görünümü için örnek daire
 const DEMO_RESIDENT_UNIT = "A-12";
 
+const INVITE_STORAGE_KEY = "kovan_pending_invite_token";
+
 function invitationTokenFromUrl() {
   try {
-    if (window.location.pathname !== "/davet") return "";
-    return new URLSearchParams(window.location.search).get("token") || "";
+    const searchParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = (window.location.pathname === "/davet" || searchParams.has("token"))
+      ? searchParams.get("token")
+      : null;
+
+    if (tokenFromUrl) {
+      // #42: Token adres çubuğunda açık durmasın (referrer sızıntısı / geçmiş kirliliği önlenir),
+      // ancak sayfa yenilendiğinde davet kaybolmasın diye sessionStorage'a güvenle alınır.
+      sessionStorage.setItem(INVITE_STORAGE_KEY, tokenFromUrl);
+      searchParams.delete("token");
+      const cleanSearch = searchParams.toString();
+      const cleanUrl = window.location.pathname + (cleanSearch ? "?" + cleanSearch : "");
+      window.history.replaceState({}, "", cleanUrl);
+      return tokenFromUrl;
+    }
+
+    if (window.location.pathname === "/davet") {
+      return sessionStorage.getItem(INVITE_STORAGE_KEY) || "";
+    }
+    return "";
   } catch {
     return "";
   }
@@ -280,17 +300,25 @@ export default function App() {
 
   const closeModal = useCallback(() => setModal(null), []);
   const notify = useCallback((message) => setToast(message), []);
-  const closeInvite = useCallback(() => setInviteToken(""), []);
+  const closeInvite = useCallback(() => {
+    setInviteToken("");
+    try {
+      sessionStorage.removeItem(INVITE_STORAGE_KEY);
+    } catch {}
+  }, []);
 
   const handleLoggedIn = useCallback(() => {
     setInviteToken("");
+    try {
+      sessionStorage.removeItem(INVITE_STORAGE_KEY);
+    } catch {}
     setTab("dashboard");
     setToast("");
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setProfileMenuOpen(false);
-    logout();
+    await logout();
     setModal(null);
     setMobile(false);
     setToast("");
