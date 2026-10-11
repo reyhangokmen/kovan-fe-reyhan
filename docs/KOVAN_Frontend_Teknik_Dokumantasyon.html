@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>KOVAN Frontend - Kapsamlı Teknik Mimari ve Metot Rehberi</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  @page {
+    size: A4;
+    margin: 18mm 16mm 18mm 16mm;
+    @bottom-right {
+      content: counter(page);
+    }
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1e293b;
+    background: #ffffff;
+    line-height: 1.6;
+    font-size: 10.5pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* KAPAK SAYFASI */
+  .cover-page {
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100vh;
+    box-sizing: border-box;
+    padding: 40px 20px;
+    background: linear-gradient(145deg, #0f172a 0%, #1e293b 60%, #090d16 100%);
+    color: #ffffff;
+    border-radius: 8px;
+  }
+
+  .cover-badge {
+    display: inline-block;
+    background: rgba(217, 119, 6, 0.2);
+    border: 1px solid #d97706;
+    color: #f59e0b;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .cover-title {
+    font-size: 32pt;
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 20px 0 10px 0;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+  }
+
+  .cover-title span {
+    color: #f59e0b;
+  }
+
+  .cover-subtitle {
+    font-size: 13pt;
+    color: #94a3b8;
+    max-width: 600px;
+    line-height: 1.5;
+  }
+
+  .cover-meta {
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    padding-top: 25px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    font-size: 9.5pt;
+  }
+
+  .meta-item strong {
+    display: block;
+    color: #f59e0b;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+
+  .meta-item span {
+    color: #e2e8f0;
+    font-weight: 500;
+  }
+
+  /* İÇERİK YAPISI */
+  h1 {
+    font-size: 18pt;
+    font-weight: 800;
+    color: #0f172a;
+    border-bottom: 2.5px solid #d97706;
+    padding-bottom: 6px;
+    margin-top: 24px;
+    margin-bottom: 14px;
+    page-break-after: avoid;
+  }
+
+  h2 {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 18px;
+    margin-bottom: 8px;
+    border-left: 4px solid #d97706;
+    padding-left: 10px;
+    page-break-after: avoid;
+  }
+
+  h3 {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #334155;
+    margin-top: 14px;
+    margin-bottom: 6px;
+    page-break-after: avoid;
+  }
+
+  p {
+    margin: 0 0 10px 0;
+    text-align: justify;
+  }
+
+  ul, ol {
+    margin: 0 0 12px 0;
+    padding-left: 20px;
+  }
+
+  li {
+    margin-bottom: 4px;
+  }
+
+  /* KOD VE TABLOLAR */
+  code {
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 8.5pt;
+    background: #f1f5f9;
+    color: #d97706;
+    padding: 2px 5px;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+  }
+
+  pre {
+    background: #0f172a;
+    color: #f8fafc;
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 8pt;
+    line-height: 1.45;
+    overflow-x: auto;
+    border: 1px solid #334155;
+    margin: 10px 0;
+    page-break-inside: avoid;
+  }
+
+  pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    border: none;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 9pt;
+    page-break-inside: avoid;
+  }
+
+  th {
+    background: #f8fafc;
+    color: #0f172a;
+    font-weight: 700;
+    text-align: left;
+    padding: 8px 10px;
+    border: 1px solid #cbd5e1;
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  td {
+    padding: 7px 10px;
+    border: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+
+  tr:nth-child(even) td {
+    background: #f8fafc;
+  }
+
+  /* VURGU KUTULARI (CALLOUTS) */
+  .callout {
+    background: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    border-radius: 0 6px 6px 0;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 9.5pt;
+    page-break-inside: avoid;
+  }
+
+  .callout strong {
+    color: #b45309;
+    display: block;
+    margin-bottom: 3px;
+  }
+
+  .callout-info {
+    background: #eff6ff;
+    border-left-color: #3b82f6;
+  }
+
+  .callout-info strong {
+    color: #1d4ed8;
+  }
+
+  .callout-qa {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #0f172a;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin: 14px 0;
+    page-break-inside: avoid;
+  }
+
+  .qa-question {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 10pt;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .qa-tag {
+    background: #d97706;
+    color: #ffffff;
+    font-size: 7.5pt;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .qa-answer {
+    color: #334155;
+    font-size: 9.5pt;
+    line-height: 1.5;
+  }
+
+  .qa-answer strong {
+    color: #0f172a;
+  }
+
+  .page-break {
+    page-break-after: always;
+  }
+
+  .badge-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 8pt;
+    font-weight: 600;
+    background: #e2e8f0;
+    color: #334155;
+  }
+
+  .badge-gold {
+    background: #fef3c7;
+    color: #b45309;
+  }
+
+  .badge-blue {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= KAPAK SAYFASI ================= -->
+<div class="cover-page">
+  <div>
+    <span class="cover-badge">KOVAN Apartman & Site Yönetim Ekosistemi</span>
+    <h1 class="cover-title">Frontend Teknik Mimari &amp; <span>Metot / State Rehberi</span></h1>
+    <p class="cover-subtitle">
+      Mentör ve Teknik Mülakat Görüşmeleri İçin Kapsamlı Kod Mimarisi, Canlı Backend Entegrasyonu, Güvenlik (#11, #42, #62), Aidat / Arsa Payı (#114), Gereksinim Eşleştirmesi (#117) ve Soru-Cevap Kitapçığı.
+    </p>
+  </div>
+
+  <div class="cover-meta">
+    <div class="meta-item">
+      <strong>Proje &amp; Repozituvar</strong>
+      <span>apartment-fe / kovan-fe-reyhan</span>
+    </div>
+    <div class="meta-item">
+      <strong>Geliştirici &amp; Sorumluluk</strong>
+      <span>Reyhan Gökmen (Frontend &amp; UI/UX Developer)</span>
+    </div>
+    <div class="meta-item">
+      <strong>Teknoloji Yığını</strong>
+      <span>React 19, Vite 8, Modern CSS3 Variables, Docker, K8s</span>
+    </div>
+    <div class="meta-item">
+      <strong>Tarih &amp; Sürüm</strong>
+      <span>Ekim 2026 / Sürüm v2.4 (Production Ready)</span>
+    </div>
+  </div>
+</div>
+
+<!-- ================= BÖLÜM 1: MİMARİ VE TEKNOLOJİ ================= -->
+<h1>1. Genel Mimari ve Teknoloji Tercihleri</h1>
+<p>
+  KOVAN frontend mimarisi, yüksek performans, modern kullanıcı deneyimi ve düşük bakım maliyeti hedeflenerek tasarlanmış tek sayfa uygulamasıdır (Single Page Application - SPA). Kat Mülkiyeti Kanunu (KMK) standartlarına tam uyumlu çalışan sistem, yönetici ve sakin rollerine göre dinamik olarak arayüz üretir.
+</p>
+
+<h2>1.1 Neden Vite ve React 19?</h2>
+<ul>
+  <li><strong>Vite Esbuild &amp; Rollup Motoru:</strong> Klasik Create React App (Webpack) tabanlı yapılarda build ve HMR (Hot Module Replacement) saniyeler sürerken; Vite yerel ES modüllerini (native ESM) kullanarak milisaniyeler seviyesinde anlık geliştirme ve <code>npm run build</code> aşamasında optimize edilmiş bundle üretir.</li>
+  <li><strong>React 19 Bileşen Yaşam Döngüsü:</strong> DOM güncellemelerinde sanal DOM (Virtual DOM) verimliliği ve hook mimarisi (<code>useState</code>, <code>useEffect</code>, <code>useCallback</code>, <code>useMemo</code>) ile hatasız state akışı sağlanır.</li>
+  <li><strong>Tree-Shaking:</strong> Kullanılmayan ikon (Lucide-react) ve kütüphane fonksiyonları derleme aşamasında otomatik budanarak tarayıcıya gönderilen JavaScript dosya boyutu 122 kB (gzip) seviyesinde tutulmuştur.</li>
+</ul>
+
+<h2>1.2 Tasarım Sistemi ve CSS Mimarisi</h2>
+<p>
+  Projede ağır harici UI kütüphaneleri (Bootstrap, Material UI vb.) yerine tamamen özelleştirilmiş, yüksek performanslı ve sıfır bağımlılıklı bir <strong>CSS Custom Properties (CSS Değişkenleri)</strong> sistemi kurulmuştur.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>CSS Değişkeni</th>
+      <th>Açık Tema (Light)</th>
+      <th>Koyu Tema (Dark)</th>
+      <th>Kullanım Amacı</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>--gold</code> / <code>--gold-dark</code></td>
+      <td>#d97706 / #b45309</td>
+      <td>#f59e0b / #d97706</td>
+      <td>KOVAN marka kimliği, birincil butonlar, rozetler ve vurgu ikonları</td>
+    </tr>
+    <tr>
+      <td><code>--page</code></td>
+      <td>#f8fafc</td>
+      <td>#0b0f19</td>
+      <td>Ana arka plan rengi, sayfa tabanı</td>
+    </tr>
+    <tr>
+      <td><code>--surface</code></td>
+      <td>#ffffff</td>
+      <td>#1e293b</td>
+      <td>Kartlar, tablolar, modal pencereleri ve gezinme çubukları</td>
+    </tr>
+    <tr>
+      <td><code>--line</code></td>
+      <td>#e2e8f0</td>
+      <td>rgba(255,255,255,0.1)</td>
+      <td>Hafif ve zarif ayırıcı kenarlıklar</td>
+    </tr>
+    <tr>
+      <td><code>--ink</code></td>
+      <td>#0f172a</td>
+      <td>#f8fafc</td>
+      <td>Birincil metin ve başlık rengi</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <strong>Mentöre Söylenecek Anahtar Cümle (Glassmorphism &amp; Responsive):</strong>
+  "Kartlarda ve gezinme çubuğunda <code>backdrop-filter: blur(14px)</code> ve yarı saydam renklerle modern buzlu cam (Glassmorphism) uyguladık. Responsive tasarımda ise CSS Grid ve Flexbox kombinasyonuyla masaüstünde çift kolonlu zengin ERP görünümü sunarken, mobil cihazlarda dikey akışa kusursuz uyum sağladık."
+</div>
+
+<div class="page-break"></div>
+
+<!-- ================= BÖLÜM 2: DİZİN YAPISI ================= -->
+<h1>2. Dizin Yapısı ve Modüler Organizasyon</h1>
+<pre><code>src/
+├── main.jsx                 # React root render ve React.StrictMode sarmalayıcısı
+├── App.jsx                  # Ana yönlendirme ve oturum durumu yönetimi (View Switcher)
+├── App.css                  # Global tasarım token'ları, landing & panel stil kuralları
+├── api/
+│   ├── client.js            # Merkezi Axios HTTP istemcisi (Interceptors, Auth headers)
+│   └── kovan.js             # Backend REST endpoint metotları (Spring Boot köprüsü)
+├── components/              # Klasik modül bileşenleri (Finans, Daireler, Görevler, Park)
+├── live/                    # Canlı backend verisiyle çalışan reaktif modüller
+│   ├── ApartmentsLive.jsx   # Canlı daire & sakin listesi ve filtreleme
+│   ├── SiteSettingsLive.jsx # Canlı site kuralları ve aidat politikası
+│   ├── RolesLive.jsx        # Rol bazlı yetkilendirme (RBAC) paneli
+│   └── hooks.js             # SWR / Fetching için özel custom hook'lar
+└── prototype/               # Tam fonksiyonel interaktif prototip katmanı
+    ├── ComingSoon.jsx       # Lansman & Tanıtım sayfası (Landing Page)
+    ├── Dashboard.jsx        # Yönetim paneli ana gösterge tablosu
+    ├── Apartments.jsx       # Daire yönetimi ve acil tahliye öncelik matrisi
+    ├── Payments.jsx         # KMK uyumlu aidat takip & gecikme faizi hesaplama
+    ├── Requests.jsx         # Arıza & talep yönetimi (İş akışı durumları)
+    ├── SiteSettings.jsx     # KMK Madde 20 aidat politikası & modül açma/kapama
+    ├── ResidentSettings.jsx # Sakin profili ve acil durum afet sağlık kayıtları
+    ├── UI.jsx               # Atomik UI bileşen seti (Button, Modal, ThemeToggle, Brand)
+    └── useTheme.js          # Dark/Light tema geçişi ve LocalStorage kalıcılık hook'u</code></pre>
+
+<!-- ================= BÖLÜM 3: COMPONENT, METHOD VE STATE REHBERİ ================= -->
+<h1>3. Bileşenler, State'ler ve Metotların Detaylı İncelemesi</h1>
+
+<h2>3.1 `src/App.jsx` - Ana Denetleyici &amp; State Yöneticisi</h2>
+<p>
+  Uygulamanın omurgasıdır. React Router gibi harici bir yönlendiriciye ihtiyaç duymadan, hafif ve hızlı bir <strong>State-Driven Navigation (Durum Güdümlü Yönlendirme)</strong> mimarisi uygular.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>State Değişkeni</th>
+      <th>Tipi &amp; Varsayılan</th>
+      <th>Fonksiyonel Görevi</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>view</code></td>
+      <td>String ('tanitim')</td>
+      <td>Kullanıcının tanıtım sayfasında mı ('tanitim'), yönetim panelinde mi ('app') yoksa giriş ekranında mı ('login') olduğunu yönetir.</td>
+    </tr>
+    <tr>
+      <td><code>activeTab</code></td>
+      <td>String ('dashboard')</td>
+      <td>Panel açıkken hangi modülün (Daireler, Aidat, Talepler, Ayarlar) aktif olduğunu belirler.</td>
+    </tr>
+    <tr>
+      <td><code>currentRole</code></td>
+      <td>String ('yonetici')</td>
+      <td>Rol simülasyonunu yönetir ('yonetici' veya 'sakin'). Rol değiştikçe izin verilmeyen menüler gizlenir.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Önemli Metotlar:</h3>
+<ul>
+  <li><code>handleViewChange(newView)</code>: Ekranlar arası geçişi sağlar. Tanıtım sayfasından panele geçişte tarayıcı scroll pozisyonunu en üste sıfırlar (<code>window.scrollTo(0, 0)</code>).</li>
+  <li><code>handleRoleSwitch(newRole)</code>: Mentöre rol bazlı yetkilendirmeyi göstermek için tek tıkla Yönetici ve Sakin perspektifleri arasında geçiş yapar. Sakin rolüne geçildiğinde finansal kasa detayları veya yönetici ayarları saklanır.</li>
+</ul>
+
+<h2>3.2 `src/prototype/useTheme.js` - Özel Tema Hook'u</h2>
+<p>
+  Kullanıcının tema tercihini yöneten ve tarayıcı hafızasında (<code>localStorage</code>) saklayan custom hook'tur.
+</p>
+<pre><code>// useTheme.js Çalışma Mantığı:
+export function useTheme() {
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('kovan_theme') || 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('kovan_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+  };
+
+  return { theme, toggleTheme };
+}</code></pre>
+<div class="callout callout-info">
+  <strong>Mentöre Teknik Açıklama:</strong>
+  "Hook içinde <code>useState</code>'e başlangıç değeri olarak bir fonksiyon (lazy initialization) vererek her re-render'da <code>localStorage</code> okuma maliyetini engelledik. <code>useEffect</code> ile DOM'un en tepesindeki <code>html</code> etiketine <code>data-theme</code> atayarak tüm CSS değişkenlerinin anında ve sıfır gecikmeyle değişmesini sağladık."
+</div>
+
+<div class="page-break"></div>
+
+<h2>3.3 `src/prototype/ComingSoon.jsx` - Tanıtım &amp; Lansman Sayfası</h2>
+<p>
+  KOVAN'ın potansiyel kullanıcılara tanıtıldığı, ön kayıt toplandığı ve mobil mağaza çıkışının duyurulduğu landing page bileşenidir.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metot &amp; Olay Yöneticisi</th>
+      <th>Tetikleyici</th>
+      <th>Gerçekleştirdiği İşlem</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>handleDemoSubmit(e)</code></td>
+      <td>Ön Kayıt Formu Submit</td>
+      <td>E-posta formatını doğrular, ön kayıt talebini alır, <code>demoRequested</code> state'ini <code>true</code> yaparak tebrik ve avantaj bilgilendirme mesajını render eder.</td>
+    </tr>
+    <tr>
+      <td><code>handleCopyIban(iban, key)</code></td>
+      <td>IBAN Kopyala Butonu</td>
+      <td>Modern <code>navigator.clipboard.writeText(iban)</code> API'sini çağırır. <code>setCopiedIban(key)</code> ile 2 saniye boyunca buton üzerinde "Kopyalandı!" rozeti gösterip ardından <code>setTimeout</code> ile sıfırlar.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Hero &amp; Mobil Senkronizasyon Mimarisi:</h3>
+<ul>
+  <li><strong>100vh Full Screen Hero:</strong> <code>min-height: calc(100vh - 72px)</code> ve <code>box-sizing: border-box</code> kuralıyla ilk açılışta kullanıcının karşısına sadece kusursuz dengelenmiş Hero ekranı çıkar. Alt bölümlerden hiçbir grafik taşma yapmaz.</li>
+  <li><strong>Vektör Rozetler (OfficialStoreBadges):</strong> Apple App Store ve Google Play logoları yüksek çözünürlüklü SVG olarak elle çizilmiştir; raster görsellere (PNG/JPG) kıyasla retina ekranlarda sıfır pikselleşme ve sıfır network gecikmesi sağlar.</li>
+  <li><strong>Geliştirme Ekibi &amp; Roller:</strong> 5 kişilik geliştirme ekibi (Yusuf, Hakan, Ceren, Onur, Reyhan) dinamik bir array üzerinden <code>map()</code> ile kartlara dönüştürülür.</li>
+</ul>
+
+<h2>3.4 `src/prototype/Payments.jsx` - KMK Uyumlu Aidat &amp; Faiz Mantığı</h2>
+<p>
+  Kat Mülkiyeti Kanunu Madde 20 uyarınca aidat borçlarını, gecikme faizlerini ve online tahsilat akışlarını yöneten kritik modüldür.
+</p>
+
+<h3>KMK Madde 20 Gecikme Faizi Formülü:</h3>
+<p>
+  Kanuna göre vadesinde ödenmeyen aidat borçları için aylık <strong>%5</strong> (veya yönetim planında belirlenen oran) gecikme tazminatı işletilebilir.
+</p>
+<pre><code>// Aidat ve Gecikme Faizi Hesaplama Fonksiyonu:
+function calculateLateFee(debtAmount, dueDateStr, monthlyRatePercent = 5) {
+  const dueDate = new Date(dueDateStr);
+  const today = new Date();
+  
+  if (today &lt;= dueDate) return 0; // Vadesi geçmemiş borçta faiz yok
+
+  // Gecikilen gün ve ay farkı hesabı
+  const diffTime = Math.abs(today - dueDate);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const diffMonths = diffDays / 30.0;
+
+  // Faiz = Borç * (Aylık Oran / 100) * Gecikilen Ay
+  const lateFee = debtAmount * (monthlyRatePercent / 100) * diffMonths;
+  return Math.round(lateFee * 100) / 100;
+}</code></pre>
+
+<h2>3.5 `src/prototype/Apartments.jsx` - Afet Hazırlığı &amp; Tahliye Önceliği</h2>
+<p>
+  Daire sakinlerinin yönetildiği ekranda, klasik apartman yazılımlarından farklı olarak hayati önem taşıyan bir <strong>Afet ve Acil Durum Triage (Önceliklendirme)</strong> algoritması bulunur.
+</p>
+<ul>
+  <li><code>triagePriority</code> State'i: Dairede yatağa bağlı hasta, sürekli oksijen tüpü kullanan birey veya bebek varsa daire kartı otomatik olarak <strong>Kırmızı (Öncelikli Tahliye)</strong> alarmı verir.</li>
+  <li><code>hasPets</code> Bilgisi: Tahliye sırasında evcil hayvanların tespiti için acil kurtarma ekiplerine hazır veri raporu sunar.</li>
+  <li><code>UnitGeneratorModal</code>: Yöneticinin tek tek daire girmesi yerine, blok sayısı, kat sayısı ve kattaki daire adedini girerek saniyeler içinde 100+ daireyi algoritmik olarak oluşturmasını sağlayan toplu üretim modülüdür.</li>
+</ul>
+
+<div class="page-break"></div>
+
+<!-- ================= BÖLÜM 4: MENTÖR MÜLAKAT SORU & CEVAPLARI ================= -->
+<h1>4. Mentörün Sorabileceği 16 Zorlayıcı Soru &amp; Yanıtlar</h1>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 1</span> Neden Redux veya Zustand gibi global bir state kütüphanesi kurmadınız?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "Projemizin mevcut ölçeğinde global state ihtiyacı yalnızca 'Aktif Sekme', 'Oturum/Rol' ve 'Tema' gibi birkaç anahtar değerden ibarettir. React'in kendi <code>useState</code> ve Context API imkanları fazlasıyla yeterli ve hafiftir. İhtiyaç yokken Redux eklemek gereksiz boilerplate kod üretir, bundle boyutunu 50+ kB artırır ve bakımı zorlaştırır. Gelecekte soket tabanlı canlı mesajlaşma ve bildirim katmanı genişlediğinde Zustand gibi minimalist bir kütüphaneye kolayca evrilebilecek modülerlikte tasarladık."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 2</span> React'te gereksiz re-render'ları (re-rendering) nasıl önlediniz?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "Bileşenleri atomik parçalara böldük. Örneğin bir tabloda arama kutusuna harf yazıldığında tüm sayfanın yeniden render olmasını engellemek için arama state'ini ilgili yerel bileşende izole ettik. Ağır hesaplamalar (örneğin KMK faiz oranları ve toplam site aidat istatistikleri) için <code>useMemo</code> kullandık; olay yöneticilerinde (event handlers) ise referans stabilitesi için <code>useCallback</code> tercih ettik."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 3</span> Dark Mode geçişinde sayfa ilk yüklenirken beyaz ekran patlaması (FOUC - Flash of Unstyled Content) nasıl engellendi?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "CSS'imizi CSS-in-JS kütüphaneleri (runtime CSS) yerine doğrudan saf CSS değişkenleri (CSS Variables) üzerine inşa ettik. <code>html[data-theme='dark']</code> seçicisi tarayıcı boyama yapmadan (paint phase) önce hazır hale geldiği için render engellenmez ve hiçbir flicker yaşanmaz. Kullanıcı tercihi <code>localStorage</code> üzerinden anında okunur."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 4</span> CSS mimarinizde neden Tailwind veya Bootstrap yerine saf CSS değişkenleri kullandınız?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "KOVAN'a özgü yüksek marka kimliği (kovan sarısı, petek dokusu, özel cam efektleri) gerekiyordu. Harici kütüphaneler yüzlerce kullanılmayan class yükleyerek performansı düşürür ve standart kalıplara hapseder. Saf CSS Custom Properties kullanarak hem HTML'imizi temiz tuttuk, hem tarayıcının yerel donanım hızlandırmasından (hardware acceleration) tam faydalandık, hem de runtime maliyeti sıfır olan bir tasarım sistemi elde ettik."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 5</span> Kat Mülkiyeti Kanunu (KMK) standartlarını frontend'de nasıl modellediniz?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "KMK Madde 20, vadesi geçen aidatlara aylık %5 gecikme tazminatı işletilmesini öngörür. <code>Payments.jsx</code> ve <code>SiteSettings.jsx</code> içinde bu mantığı kurduk: Yönetici isterse faiz uygulamasını kapatabilir veya kanuni oranı girebilir. Sistem son ödeme tarihiyle bugünün tarihi arasındaki gün farkını hesaplar ve faizi ana paraya otomatik olarak ekleyip şeffaf bir döküm halinde sakin ve yöneticiye sunar."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 6</span> Afet yönetimi modülü projenize nasıl bir rekabet avantajı katıyor?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "Mevcut piyasadaki apartman yönetim programları yalnızca muhasebeye odaklanmaktadır. KOVAN ise insan hayatını merkeze alır. Dairelerdeki engelli, yatağa bağlı hasta ve bebek kayıtları ile evcil hayvan verileri afet anında yönetici panelinde ve AFAD/itfaiye tahliye listelerinde Kırmızı Öncelikli olarak tek tıkla listelenir. Bu da KOVAN'ı klasik bir aidat programından gerçek bir 'Akıllı Konut Ekosistemi'ne dönüştürür."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 7</span> Backend ile haberleşme mimariniz nasıl kuruldu?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "<code>src/api/client.js</code> altında merkezi bir Axios örneği (instance) yapılandırdık. Request Interceptor ile her isteğe otomatik olarak <code>Authorization: Bearer &lt;token&gt;</code> başlığı eklenir. Response Interceptor ile 401 Unauthorized hataları yakalanarak oturum otomatik olarak güvenli login ekranına yönlendirilir. Backend tarafında Spring Boot mikroservisleri ve DigitalOcean üzerindeki Kubernetes (K8s) cluster'ımızla RESTful JSON standartlarında haberleşiyoruz."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 8</span> Responsive tasarımda breakpoint stratejiniz nedir?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "Üç ana breakpoint kullandık: Masaüstü (1200px+), Tablet/Küçük Laptop (900px) ve Mobil (768px - 480px). Özellikle Hero ve Mobil Tanıtım alanlarında <code>100vh</code> ve dinamik grid kolonları kullandık. Mobilde tablolar yatay kaydırma (horizontal scroll) ve kart görünümüne (card stack) dönüşerek tek elle kolay kullanım sağlar."
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 9</span> Güvenlik tarafında frontend'de hangi önlemleri aldınız?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "XSS (Cross-Site Scripting) saldırılarına karşı React'in JSX otomatik kaçış (escaping) mekanizmasına güvendik ve asla <code>dangerouslySetInnerHTML</code> kullanmadık. Hassas kullanıcı şifrelerini asla frontend loglarına (console) yazdırmadık. Form girişlerinde regex tabanlı e-posta ve telefon doğrulamaları uygulayarak sunucuya kirli veri gitmesini engelledik."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 10</span> Bu projede senin kişisel katkın ve rolün neydi?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "Frontend &amp; UI/UX Developer olarak: Tüm React bileşen mimarisini sıfırdan kurdum. Marka kimliğine uygun Glassmorphism ve CSS token sistemini geliştirdim. Kullanıcı dostu ve responsive Tanıtım Sayfası (Landing Page) ile Yönetici/Sakin panellerini kodladım. KMK uyumlu aidat ve acil tahliye algoritmalarını arayüzle buluşturdum ve Vite derleme optimizasyonlarını gerçekleştirdim."
+  </div>
+</div>
+
+
+<div class="page-break"></div>
+
+<!-- ================= BÖLÜM 5: CANLI BACKEND ENTEGRASYONU & GÜVENLİK SIKILAŞTIRMASI ================= -->
+<h1>5. Canlı Backend Entegrasyonu, Güvenlik (#11, #42, #62), Aidat / Arsa Payı (#114) &amp; Gereksinim Eşleştirmesi (#117)</h1>
+<p>
+  Bu bölümde; KOVAN platformunun mock prototip aşamasından canlı Kubernetes mikroservis kümesine bağlanması sürecinde hayata geçirilen güvenlik sıkılaştırmaları, mevzuat uyumları ve mimari çözümler detaylandırılmıştır.
+</p>
+
+<h2>5.1 #11: Token Saklama, Çıkışta Sunucu Revocation ve Koruyucu Başlıklar (CSP)</h2>
+<p>
+  Kimlik doğrulama mimarisi JWT Access Token (kısa ömürlü) ve Refresh Token (uzun ömürlü, Beni Hatırla ile 90 gün) yapısına dayanır.
+</p>
+<ul>
+  <li><strong>Oturum Depolama Güvenliği:</strong> İstemci tarafında oturum <code>localStorage</code> deposunda <code>kovan_auth</code> altında tutulur. Depolamanın engellendiği durumlarda bellek içi (in-memory) güvenli state kullanılır.</li>
+  <li><strong>Sunucu Bildirimi ile Çıkış (Logout Revocation):</strong> <code>src/api/kovan.js</code> içindeki <code>logout()</code> fonksiyonu, oturum kapatıldığında <code>POST /auth/logout</code> uç noktasına <code>{ refreshToken }</code> gönderir. Backend refresh token'ı kara listeye alarak geçersiz kılar (204 No Content). Böylece istemciden silinen token'ın kötü niyetli kişilerce sunucuda tekrar kullanılması engellenir.</li>
+  <li><strong>Kurumsal Güvenlik Başlıkları (CSP):</strong> <code>vercel.json</code> ve <code>index.html</code> dosyalarına XSS, Clickjacking ve veri sızıntılarını engelleyen kurumsal HTTP başlıkları eklenmiştir:
+    <ul>
+      <li><code>Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://kovanbe.universeconn.online https://*.vercel.app;</code></li>
+      <li><code>X-Content-Type-Options: nosniff</code> (MIME sniffing engelleme)</li>
+      <li><code>X-Frame-Options: DENY</code> (Iframe ve Clickjacking engelleme)</li>
+      <li><code>Referrer-Policy: strict-origin-when-cross-origin</code> (Referans URL sızıntı koruması)</li>
+      <li><code>Permissions-Policy: camera=(), microphone=(), geolocation=()</code> (Donanım kısıtlaması)</li>
+    </ul>
+  </li>
+  <li><strong>Mobil Güvenlik Şartnamesi:</strong> Mobil istemcide <code>AsyncStorage</code> yasaklanmış; iOS Keychain ve Android EncryptedSharedPreferences (<code>expo-secure-store</code> / <code>react-native-keychain</code>) zorunlu kılınmıştır.</li>
+</ul>
+
+<h2>5.2 #42: Davet Token'ının Adres Çubuğu Sanitizasyonu</h2>
+<p>
+  Site veya daire davet bağlantıları <code>https://.../davet?token=XYZ...</code> şeklinde üretilir.
+</p>
+<div class="callout callout-info">
+  <strong>Adres Çubuğu Güvenlik Riski ve Çözümü:</strong>
+  Token URL parametresinde kaldığında tarayıcı geçmişine kaydolur, ekran görüntülerinde ifşa olur ve dış sitelere tıklandığında Referer başlığıyla üçüncü taraflara sızabilir.
+  <code>src/App.jsx</code> içindeki <code>invitationTokenFromUrl()</code> fonksiyonu geliştirilerek:
+  <ol>
+    <li>Token URL'de yakalandığı anda <code>sessionStorage</code>'a güvenle alınır.</li>
+    <li><code>window.history.replaceState({}, "", "/davet")</code> çağrılarak adres çubuğundaki hassas token parametresi saniyesinde temizlenir.</li>
+    <li>Kullanıcı sayfayı yenilese (F5) dahi davet <code>sessionStorage</code>'dan geri yüklenir; işlem tamamlanınca hafıza silinir.</li>
+  </ol>
+</div>
+
+<h2>5.3 #62: CSRF Güvenlik Politikası ve Double Submit Cookie Mimarisi</h2>
+<p>
+  İleride token'lar XSS güvenliğini artırmak için <code>HttpOnly</code> çerezlere taşındığında, tarayıcıların çapraz isteklerde çerezleri otomatik göndermesinden kaynaklanan CSRF (Cross-Site Request Forgery) riski doğacaktır.
+</p>
+<ul>
+  <li><strong>Double Submit Cookie Çözümü:</strong> <code>src/api/client.js</code> içerisine <code>getCsrfToken()</code> fonksiyonu eklendi. Tarayıcıdaki <code>XSRF-TOKEN</code> / <code>CSRF-TOKEN</code> çerezi okunur.</li>
+  <li><strong>Otomatik Başlık Ekleme:</strong> Durum değiştiren (<code>POST</code>, <code>PUT</code>, <code>DELETE</code>, <code>PATCH</code>) tüm isteklerde <code>X-XSRF-TOKEN</code> başlığı otomatik gönderilir.</li>
+  <li><strong>Proxy İletimi:</strong> <code>api/proxy.js</code> sunucusuz proxy fonksiyonu gelen <code>x-xsrf-token</code> başlığını backend kümesine kayıpsız iletir.</li>
+</ul>
+
+<h2>5.4 #114: Aidat İçin Alan Tipi ve Arsa Payı (KMK Madde 20) Entegrasyonu</h2>
+<p>
+  Kat Mülkiyeti Kanunu Madde 20 uyarınca apartman ortak giderleri ve aidatlar aksi belirtilmedikçe Arsa Payı oranına göre bölüştürülür.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Ekran</th>
+      <th>Eklenen / Görüntülenen Alanlar</th>
+      <th>İşlev ve Katkısı</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Kat ve Daireler (ApartmentsLive)</strong></td>
+      <td><code>areaType</code>, <code>unitType</code>, <code>grossM2</code>, <code>landShare</code></td>
+      <td>Daire ekleme modalında girilen Arsa Payı ve Daire Tipi, kat planındaki daire kartı rozetlerine (örn. <em>Konut · 2+1 · 95 m² · Arsa: 12/1000</em>) ve detay modalına yansıtıldı.</td>
+    </tr>
+    <tr>
+      <td><strong>Toplu Borçlandırma (Payments)</strong></td>
+      <td>Arsa Payı (KMK 20) Hesaplama Formülü</td>
+      <td>Yönetici toplam bütçeyi (örn. 75.000 ₺) girdiğinde, sistem bağımsız bölümlerin arsa payı oranına (<code>landShare / totalLandShare</code>) göre aidatı otomatik paylaştırır.</td>
+    </tr>
+    <tr>
+      <td><strong>Aidat Listesi Tablosu</strong></td>
+      <td>Daire Sütunu Genişletmesi</td>
+      <td>Yönetici tablosunda daire numarasının yanında daire tipi (örn. 3+1) ve arsa payı (örn. Arsa: 0.015) şeffaf şekilde gösterildi.</td>
+    </tr>
+    <tr>
+      <td><strong>Site Ayarları (SiteSettings)</strong></td>
+      <td>Aidat Dağıtım Modeli</td>
+      <td>Sabit, Daire Tipi ve m² modellerinin yanına KMK 20 Arsa Payı seçeneği entegre edildi.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>5.5 #117: Ekranlardaki Eski ve Yeni Gereksinimlerin Eşleştirilme Tablosu</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Ekran Adı</th>
+      <th>Eski Durum (Prototip)</th>
+      <th>Yeni Durum (Canlı Backend)</th>
+      <th>Uç Noktalar (REST APIs)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Giriş / Oturum</strong></td>
+      <td>Statik oturum, 10 dk kod, sınırsız şifre denemesi, TCKN var</td>
+      <td>JWT + Refresh, 5 yanlışta kilit (423), 5 dk kod geçerliliği, TCKN kaldırıldı, sunucuya logout bildirimi</td>
+      <td><code>POST /auth/login</code>, <code>/refresh</code>, <code>/switch-site</code>, <code>/logout</code></td>
+    </tr>
+    <tr>
+      <td><strong>Site Kurulum Sihirbazı</strong></td>
+      <td>Zorunlu alanlar belirsiz</td>
+      <td>Zorunlu alanlar kırmızı yıldızlı (*), backend veri formatına tam uyumlu kayıt</td>
+      <td><code>POST /sites/register</code></td>
+    </tr>
+    <tr>
+      <td><strong>Kat ve Daireler</strong></td>
+      <td>Mock daireler</td>
+      <td>Gerçek bloklar, toplu daire ekleme, sakin atama, daire davet linki, arsa payı rozetleri</td>
+      <td><code>GET/POST /blocks</code>, <code>/units</code>, <code>/assignments</code></td>
+    </tr>
+    <tr>
+      <td><strong>Rol ve Yetkiler</strong></td>
+      <td>Statik liste</td>
+      <td>Gerçek üyelikler, kurul üyesi atama, davet listeleme/tekrar gönderme/iptal, 24px padding</td>
+      <td><code>GET /memberships</code>, <code>POST /board-roles</code>, <code>/invitations</code></td>
+    </tr>
+    <tr>
+      <td><strong>Site Ayarları</strong></td>
+      <td>Kaydedilmeyen formlar</td>
+      <td>Site kimliği güncelleme, tolerans günü, avans taksiti, azami %5 KMK gecikme faizi, modüller</td>
+      <td><code>GET/PUT /sites/current</code>, <code>/settings</code>, <code>/modules</code></td>
+    </tr>
+    <tr>
+      <td><strong>Profil &amp; Telefon</strong></td>
+      <td>Tek adımda telefon kaydı</td>
+      <td>İki adımlı güvenli telefon değişikliği (POST /phone/code -> POST /phone), PUT'a güvenli gönderim</td>
+      <td><code>GET/PUT /auth/me</code>, <code>POST /phone/code</code>, <code>/phone</code></td>
+    </tr>
+    <tr>
+      <td><strong>Aidat, Talep, Duyuru</strong></td>
+      <td>Mock prototip</td>
+      <td>Üstlerinde sarı uyarı bandı mevcut, backend geliştirildikçe canlıya bağlanacak (BMS-83 sonrası)</td>
+      <td>Prototip / Mock Veri Katmanı</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>5.6 Altyapı Çözümleri: Vercel Serverless Proxy ve Pull Request (#2)</h2>
+<ul>
+  <li><strong>Vercel CORS Proxy Mimarisi (<code>api/proxy.js</code>):</strong> Canlı Spring Boot backend'i yalnızca kendi alan adını kabul ettiği için Vercel'den gelen tarayıcı isteklerinde <code>403 Invalid CORS request</code> dönüyordu. Vercel üzerinde çalışan özel bir Serverless Proxy yazılarak isteklerin arka planda <code>Origin: https://kovan.universeconn.online</code> ile iletilmesi sağlandı ve CORS engeli tamamen aşıldı.</li>
+  <li><strong>Rol ve Yetkiler Panel Düzenlemesi:</strong> Kurul üyesi ata formunun kenarlara yapışması 24px padding ile çözüldü; Ata/Davet Et butonundaki boş etiket kaldırılarak buton tabana (<code>align-items: flex-end</code>) ve 42px yüksekliğe eşitlendi.</li>
+  <li><strong>Pull Request #2:</strong> Tüm geliştirmeler <code>BMS-144-ui</code> dalından ekip ana dalı olan <code>BMS-144</code>'e GitHub üzerinden PR #2 olarak açıldı ve entegrasyona hazır hale getirildi.</li>
+</ul>
+
+<!-- ================= ÖZET VE SONUÇ ================= -->
+<div style="margin-top: 30px; padding: 16px; background: #f1f5f9; border-radius: 8px; border: 1px solid #cbd5e1;">
+  <h3 style="margin-top: 0; color: #0f172a;">Mentör Karşısında Başarı Taktikleri:</h3>
+  <ul style="margin-bottom: 0;">
+    <li>Soru sorulduğunda doğrudan "Evet/Hayır" demek yerine <strong>neden</strong> o kararı aldığını teknik gerekçesiyle açıkla (Örn: "Vite seçtik çünkü native ESM motoru derleme süresini %80 kısalttı").</li>
+    <li>Mimarinin Kat Mülkiyeti Kanunu ve Acil Afet Hazırlığı gibi gerçek hayat problemleriyle nasıl örtüştüğünü vurgula.</li>
+    <li>CSS ve React 19 kodlarının temizliğini, rol bazlı yetkilendirme (RBAC) yeteneğini canlı demo üzerinde göster.</li>
+  </ul>
+</div>
+
+</body>
+</html>
