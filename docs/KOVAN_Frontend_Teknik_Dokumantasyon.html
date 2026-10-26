@@ -634,6 +634,49 @@ function calculateLateFee(debtAmount, dueDateStr, monthlyRatePercent = 5) {
   </div>
 </div>
 
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 11</span> Aynı anda birden fazla API isteği 401 aldığında token yenileme (Single In-Flight Refresh) eşzamanlılığını nasıl çözdünüz?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "Backend kuralımız gereği aynı <code>refreshToken</code> ile aynı anda birden fazla <code>/auth/refresh</code> isteği giderse yalnızca biri kabul edilir, diğerleri 401 alır. Bu yüzden <code>src/api/client.js</code> içinde <code>refreshSession()</code> fonksiyonunu tek bir Promise (in-flight singleton) altında topladık. Aynı anda gelen 10 istek de olsa ağa yalnızca <strong>1 adet</strong> refresh isteği gider. Diğer tüm istekler bu Promise'i bekler ve yenileme bittiğinde depodaki güncel token ile otomatik olarak (retry) yeniden denenir."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 12</span> Kullanıcının kişisel profil verilerini (ad, soyad, telefon) localStorage'da neden tutmadınız?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "OWASP ve KVKK veri gizliliği ilkeleri gereğince, tarayıcının <code>localStorage</code> alanı XSS ve paylaşımlı cihazlarda düz metin olarak okunabilir bir risktir. Bu yüzden <code>setAuth()</code> içinde veriyi filtreleyerek (sanitize) <code>localStorage</code>'a yalnızca oturum belirteçlerini (token, refreshToken, siteId) kaydettik. Kullanıcının adı, soyadı, telefon ve e-posta gibi kişisel profil verilerini (PII) diske yazmayıp sadece bellekte (in-memory React state) tuttuk. Sayfa yenilendiğinde (F5) <code>/auth/me</code> üzerinden profil güvenle çekilir."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 13</span> Kullanıcı çıkış yaptığında (logout) sekme kapansa bile sunucuya bildirim gitmesini nasıl garanti ettiniz?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "Eski yapıda <code>logout()</code> fonksiyonu access token süresi dolduğunda 401 alıp tekrar token yenileme döngüsüne giriyordu ve sunucuya iptal bildirimi ulaşamıyordu. Bunu çözmek için çıkış isteğini interceptor zincirinden çıkarıp doğrudan <code>publicApi</code> ile <code>keepalive: true</code> bayrağını kullanarak gönderdik. <code>keepalive</code> sayesinde kullanıcı sekmeyi o milisaniyede kapatsa dahi tarayıcı isteği arka planda sunucuya ulaştırır. Ayrıca ani kapanmalar için <code>navigator.sendBeacon</code> yedeğini bağladık; çıkışta yerel depolama ve sessionStorage tümden sıfırlanır."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 14</span> Canlı test ortamı neden 4 Ekim sürümünde kalmıştı ve Kubernetes dağıtımını nasıl düzelttiniz?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "DigitalOcean test kümesindeki dağıtım tanımını incelediğimizde, <code>k8s/overlays/cloud/kustomization.yaml</code> dosyasında <code>newTag: 5428d40</code> yazıyordu. <code>5428d40</code> ise Hakan'ın 4 Ekim Pazar 21:10'da attığı ilk backend bağlantısı commit'iydi. PR #2 11 Ekim'den beri açık beklediği ve tag güncellenmediği için cluster bu eski imajı sunmaya devam etmişti. Kustomize dosyasındaki imaj etiketini güncel commit SHA'si ile güncelledik ve dağıtım adımlarını dokümante ettik."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 15</span> Duyurular ekranında Blok Sorumlusu rolünün yetkisini nasıl kısıtladınız?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "Rol Bazlı Yetkilendirme (RBAC) kapsamında, Site Yöneticisi tüm siteye duyuru geçebilirken Blok Sorumlusunun sadece kendi sorumlu olduğu bloğu seçebilmesi gerekiyordu. <code>Announcements.jsx</code> bileşeninde kullanıcının rolü <code>BLOK_SORUMLUSU</code> olduğunda hedef kitle seçimindeki 'Tüm Site' ve diğer blok seçenekleri kilitlenerek yalnızca kendi bloğu (örn. A Blok) zorunlu hale getirildi."
+  </div>
+</div>
+
+<div class="callout-qa">
+  <div class="qa-question"><span class="qa-tag">Soru 16</span> Borç İhtarı bildirimleri neden TRANSACTIONAL olmak zorundadır?</div>
+  <div class="qa-answer">
+    <strong>Cevap:</strong> "Kat Mülkiyeti Kanunu ve yasal icra süreçleri gereğince borç ihtarları ticari/pazarlama bildirimi değildir; hukuki bir tebligat niteliğindedir. Bu nedenle kullanıcının bildirim ayarlarından 'Borç İhtarı' bildirimlerini kapatmasına (opt-out) izin verilemez. Sistem bu bildirimleri zorunlu yasal <code>TRANSACTIONAL</code> tipinde gönderir."
+  </div>
+</div>
+
+
 
 <div class="page-break"></div>
 
@@ -778,6 +821,29 @@ function calculateLateFee(debtAmount, dueDateStr, monthlyRatePercent = 5) {
     </tr>
   </tbody>
 </table>
+
+
+<h2>5.7 Sprint İyileştirmeleri: Merkezi Token Yenileme, 30sn Kuralı, Şifre Sıfırlama ve POST /sites</h2>
+<ul>
+  <li><strong>Tek Noktadan Yenileme (Single In-Flight Refresh):</strong> Backend kuralları doğrultusunda aynı <code>refreshToken</code> ile birden fazla istek 401 aldığında tek bir yenileme Promise'i yürütülür. 401 alan diğer tüm istekler bu işlemin tamamlanmasını bekler ve depodaki taze token ile otomatik olarak isteği tekrarlar.</li>
+  <li><strong>Kullanılmış Refresh Token 30 Saniye Kuralı:</strong> Kullanılmış bir yenileme anahtarı 30 saniye sonra tekrar gönderildiğinde backend oturumu kapatır (401). Frontend bu yanıtı yakalayarak <code>setAuth(null)</code> yapar ve kullanıcıyı doğrudan giriş ekranına (<code>/login</code>) yönlendirir.</li>
+  <li><strong>Şifre Sıfırlandığında Oturumların Kapanması:</strong> Şifre sıfırlandığında (<code>POST /auth/reset-password</code>) backend tüm cihaz oturumlarını sonlandırır. Frontend yerel oturumu siler, diğer cihazlar da bir sonraki istekte 401 alarak güvenle oturumu kapatır.</li>
+  <li><strong>Yeni Uç: POST /sites (Giriş Yapmış Kullanıcı İçin Site Açma):</strong> Giriş yapmış kullanıcıların yeni bir site/apartman oluşturması için <code>POST /sites</code> ucu bağlandı. İşlem bitiminde <code>reloadWorkspaces()</code> ve <code>POST /auth/switch-site</code> ile doğrudan yeni siteye geçilir.</li>
+  <li><strong>Logo Adresi Formatı Doğrulaması:</strong> Güvenlik sebebiyle site logolarında yalnızca <code>http://</code> veya <code>https://</code> adresleri kabul edilir; modal ve API katmanında regex doğrulaması zorunlu kılınmıştır.</li>
+</ul>
+
+<h2>5.8 Arayüz ve Faz-1 Kapsam Temizliği (K-13)</h2>
+<ul>
+  <li><strong>Demo Verilerinin Kaldırılması:</strong> Arayüzdeki <code>DemoBanner</code>, sabit <code>DEMO_RESIDENT_UNIT = "A-12"</code> ve "Demo kart" gibi prototip kalıntıları tamamen kaldırıldı; gerçek kullanıcı/daire verisi görünümü sağlandı.</li>
+  <li><strong>Otopark Anlatımının Çıkarılması (K-13):</strong> Otopark modülü Faz-1 MVP kapsamında yer almadığı için Yardım ve SSS modalındaki otopark metinleri temizlendi.</li>
+  <li><strong>Blok Sorumlusu Duyuru Kısıtlaması:</strong> <code>BLOK_SORUMLUSU</code> rolüne sahip yöneticilerin duyuru oluştururken sadece kendi sorumlu oldukları bloğu seçebilmeleri sağlandı.</li>
+</ul>
+
+<h2>5.9 Bildirim Analizi & Hukuki Tebligat Standardı</h2>
+<div class="callout callout-warning">
+  <strong>Borç İhtarı Bildirimlerinin Hukuki Niteliği (TRANSACTIONAL):</strong><br/>
+  Kat Mülkiyeti Kanunu Madde 20 ve İcra İflas Kanunu hükümleri uyarınca geciken aidatlara ilişkin borç ihtarları hukuki bir ihbar/tebligat niteliğindedir. Sakinlerin bildirim tercihlerinden bu bildirimleri kapatmasına (opt-out) izin verilemez. Sistem mimarisinde bu bildirimler zorunlu <code>TRANSACTIONAL</code> olarak tanımlanmıştır.
+</div>
 
 <h2>5.6 Altyapı Çözümleri: Vercel Serverless Proxy, K8s Dağıtımı ve Pull Request (#2)</h2>
 <ul>
