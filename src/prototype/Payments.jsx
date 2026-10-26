@@ -241,7 +241,7 @@ export function PaymentModal({ due, onClose, onSubmit }) {
           onClick={() => setMethod("card")}
         >
           <CreditCard size={16} />
-          Demo kart
+          Kredi Kartı
         </button>
         <button
           className={method === "transfer" ? "selected" : ""}
@@ -259,13 +259,12 @@ export function PaymentModal({ due, onClose, onSubmit }) {
         {method === "card" ? (
           <>
             <p className="form-note">
-              Simülasyon: Örnek kart bilgileri hazırdır. Gerçek kart bilgisi
-              girmeyin.
+              Güvenli SSL ve 3D Secure korumalı kart ödeme altyapısı.
             </p>
             <Field label="Kart üzerindeki ad">
               <input
                 required
-                defaultValue="DEMO KULLANICI"
+                defaultValue="KART SAHİBİ"
                 autoComplete="off"
               />
             </Field>

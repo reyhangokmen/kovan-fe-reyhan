@@ -7,10 +7,19 @@ import {
 import { Button, Field, Modal } from "./UI";
 import { dateLabel } from "./data";
 
-export function NewAnnouncementModal({ onClose, onSubmit }) {
+export function NewAnnouncementModal({ onClose, onSubmit, auth }) {
+  const isBlockManagerOnly =
+    auth?.roles?.includes("BLOK_SORUMLUSU") &&
+    !auth?.roles?.some((r) => ["SITE_YONETICISI", "YONETIM_KURULU", "SYSTEM_ADMIN"].includes(r));
+
+  const currentWorkspace = auth?.workspaces?.find((w) => w.siteId === auth?.siteId);
+  const assignedBlock = currentWorkspace?.blockName || auth?.blockName || "A Blok";
+
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Genel");
-  const [targetAudience, setTargetAudience] = useState("Tüm Sakinler");
+  const [targetAudience, setTargetAudience] = useState(
+    isBlockManagerOnly ? `${assignedBlock} Sakinleri` : "Tüm Sakinler",
+  );
   const [body, setBody] = useState("");
   const [notifyResidents, setNotifyResidents] = useState(true);
 
@@ -22,7 +31,7 @@ export function NewAnnouncementModal({ onClose, onSubmit }) {
       id: "ann_" + Date.now(),
       title: title.trim(),
       category,
-      targetAudience,
+      targetAudience: isBlockManagerOnly ? `${assignedBlock} Sakinleri` : targetAudience,
       body: body.trim(),
       date: new Date().toISOString().split("T")[0],
       notifyResidents,
@@ -87,24 +96,48 @@ export function NewAnnouncementModal({ onClose, onSubmit }) {
           </Field>
 
           <Field label="Hedef Kitle">
-            <select
-              value={targetAudience}
-              onChange={(e) => setTargetAudience(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                borderRadius: "6px",
-                border: "1px solid var(--line)",
-                background: "var(--surface)",
-                color: "var(--ink)",
-                fontSize: "13px",
-              }}
-            >
-              <option value="Tüm Sakinler">Tüm Sakinler (Kiracı & Malik)</option>
-              <option value="Sadece Kat Malikleri">Sadece Kat Malikleri</option>
-              <option value="A Blok Sakinleri">A Blok Sakinleri</option>
-              <option value="B Blok Sakinleri">B Blok Sakinleri</option>
-            </select>
+            {isBlockManagerOnly ? (
+              <>
+                <select
+                  value={`${assignedBlock} Sakinleri`}
+                  disabled
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--line)",
+                    background: "var(--surface)",
+                    color: "var(--ink)",
+                    fontSize: "13px",
+                    opacity: 0.9,
+                  }}
+                >
+                  <option value={`${assignedBlock} Sakinleri`}>{`${assignedBlock} Sakinleri`}</option>
+                </select>
+                <small style={{ fontSize: "11px", color: "var(--muted)", marginTop: "4px", display: "block" }}>
+                  ℹ️ Blok Sorumlusu yetkiniz gereği yalnızca {assignedBlock} sakinlerine duyuru yayınlayabilirsiniz.
+                </small>
+              </>
+            ) : (
+              <select
+                value={targetAudience}
+                onChange={(e) => setTargetAudience(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid var(--line)",
+                  background: "var(--surface)",
+                  color: "var(--ink)",
+                  fontSize: "13px",
+                }}
+              >
+                <option value="Tüm Sakinler">Tüm Sakinler (Kiracı & Malik)</option>
+                <option value="Sadece Kat Malikleri">Sadece Kat Malikleri</option>
+                <option value="A Blok Sakinleri">A Blok Sakinleri</option>
+                <option value="B Blok Sakinleri">B Blok Sakinleri</option>
+              </select>
+            )}
           </Field>
         </div>
 
@@ -173,6 +206,7 @@ export function NewAnnouncementModal({ onClose, onSubmit }) {
 export default function Announcements({
   announcements = [],
   manager = false,
+  auth,
   onAddAnnouncement,
   onDeleteAnnouncement,
 }) {
@@ -354,6 +388,7 @@ export default function Announcements({
       {/* Modal */}
       {showModal && (
         <NewAnnouncementModal
+          auth={auth}
           onClose={() => setShowModal(false)}
           onSubmit={(newAnn) => {
             onAddAnnouncement?.(newAnn);

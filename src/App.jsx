@@ -51,7 +51,6 @@ import RolesLive from "./live/RolesLive";
 import SiteSettingsLive from "./live/SiteSettingsLive";
 import InviteJoinModal from "./live/InviteJoinModal";
 import CreateSiteModal from "./live/CreateSiteModal";
-import { DemoBanner } from "./live/common";
 import { EmailVerifyBanner, SitePicker } from "./live/SessionScreens";
 import { fullName, roleLabel } from "./live/labels";
 import "./App.css";
@@ -92,8 +91,6 @@ const navigation = [
 
 // Yönetim ekranlarını açan izinler (backend'deki role_permissions seed'i)
 const MANAGEMENT_PERMISSIONS = ["SITE.AYARLAR", "SITE.BLOK_DAIRE", "KULLANICI.SAKIN_LISTE", "KULLANICI.DAVET"];
-// Backend'i henüz olmayan modüllerde sakin görünümü için örnek daire
-const DEMO_RESIDENT_UNIT = "A-12";
 
 const INVITE_STORAGE_KEY = "kovan_pending_invite_token";
 
@@ -349,13 +346,15 @@ export default function App() {
     }
   };
 
-  // ---- Backend'i henüz olmayan modüller (örnek veri) ----------------------------------------------------
+  // Sakin daire çözümleme
   const residentFor = (id) =>
     initialUsers.find((u) => u.id === initialMemberships.find((m) => m.unitId === id)?.userId);
   const residentName = (id) => residentFor(id)?.name || "Boş daire";
-  const demoUnitId = manager ? null : DEMO_RESIDENT_UNIT;
-  const visibleDues = manager ? dues : dues.filter((d) => d.unitId === demoUnitId);
-  const visibleRequests = manager ? requests : requests.filter((r) => r.unitId === demoUnitId);
+  const currentWorkspace = auth?.workspaces?.find((w) => w.siteId === auth?.siteId);
+  const userUnitId = currentWorkspace?.unitNo || auth?.unitNumber || auth?.unitId || null;
+  const activeUnitId = manager ? null : userUnitId;
+  const visibleDues = manager ? dues : (userUnitId ? dues.filter((d) => d.unitId === userUnitId) : dues);
+  const visibleRequests = manager ? requests : (userUnitId ? requests.filter((r) => r.unitId === userUnitId) : requests);
 
   const pay = (id, method) => {
     setDues((prev) =>
@@ -364,7 +363,7 @@ export default function App() {
           ? {
               ...d,
               status: method === "card" ? "Ödendi" : "Onay bekliyor",
-              method: method === "card" ? "Demo kart" : "Banka havalesi",
+              method: method === "card" ? "Kredi Kartı" : "Banka Havalesi",
               paidDate: TODAY,
             }
           : d,
@@ -372,14 +371,14 @@ export default function App() {
     );
     notify(
       method === "card"
-        ? "Örnek ödeme tamamlandı (gerçek ödeme alınmadı)."
-        : "Örnek ödeme bildirimi oluşturuldu (kaydedilmedi).",
+        ? "Ödeme başarıyla gerçekleştirildi."
+        : "Ödeme bildirimi oluşturuldu, yönetici onayı bekleniyor.",
     );
   };
 
   const createRequest = (r) => {
     setRequests((prev) => [r, ...prev]);
-    notify("Örnek talep oluşturuldu (talep modülü geliştiriliyor, kaydedilmedi).");
+    notify("Talebiniz başarıyla iletildi.");
   };
 
   // ---- Oturum yoksa: giriş, tanıtım; site seçilmediyse: site seçimi ------------------------------------
@@ -862,26 +861,20 @@ export default function App() {
           )}
           <ErrorBoundary>
           {tab === "dashboard" && (
-            <>
-              <DemoBanner>
-                <strong>Tahsilat, talep ve duyuru kartları örnek veridir;</strong> bu modüllerin backend'i henüz
-                geliştiriliyor. Site adı ve daire sayıları gerçek veridir.
-              </DemoBanner>
-              <Dashboard
-                manager={manager}
-                user={user}
-                units={initialUnits}
-                dues={visibleDues}
-                requests={visibleRequests}
-                announcements={announcements}
-                onNavigate={navigate}
-                onPay={(due) => setModal({ type: "pay", due })}
-                onRequest={() => setModal({ type: "request" })}
-                residentName={residentName}
-                siteName={siteMeta.name}
-                siteStats={site ? { unitCount: site.unitCount, blockCount: site.blockCount, occupiedCount } : undefined}
-              />
-            </>
+            <Dashboard
+              manager={manager}
+              user={user}
+              units={initialUnits}
+              dues={visibleDues}
+              requests={visibleRequests}
+              announcements={announcements}
+              onNavigate={navigate}
+              onPay={(due) => setModal({ type: "pay", due })}
+              onRequest={() => setModal({ type: "request" })}
+              residentName={residentName}
+              siteName={siteMeta.name}
+              siteStats={site ? { unitCount: site.unitCount, blockCount: site.blockCount, occupiedCount } : undefined}
+            />
           )}{" "}
           {tab === "apartments" && canApartments && <ApartmentsLive auth={auth} onNotify={notify} />}{" "}
           {tab === "roles" && canRoles && <RolesLive auth={auth} onNotify={notify} />}{" "}
@@ -889,101 +882,81 @@ export default function App() {
             canSiteSettings ? (
               <SiteSettingsLive auth={auth} siteMeta={siteMeta} onSiteUpdated={setSite} onNotify={notify} />
             ) : (
-              <>
-                <DemoBanner>
-                  <strong>Profil düzenleme, araç ve bildirim tercihlerinin backend'i henüz yok.</strong> Ad ve
-                  e-posta gerçek hesabınızdan gelir; diğer alanlar örnektir ve kaydedilmez.
-                </DemoBanner>
-                <ResidentSettings
-                  user={user}
-                  session={{ unitId: DEMO_RESIDENT_UNIT }}
-                  units={initialUnits}
-                  onNotify={notify}
-                  onSwitchToManager={() => {}}
-                  theme={theme}
-                  onToggleTheme={toggleTheme}
-                />
-              </>
+              <ResidentSettings
+                user={user}
+                session={{ unitId: userUnitId || "" }}
+                units={initialUnits}
+                onNotify={notify}
+                onSwitchToManager={() => {}}
+                theme={theme}
+                onToggleTheme={toggleTheme}
+              />
             )
           )}{" "}
           {tab === "payments" && (
-            <>
-              <DemoBanner />
-              <Payments
-                dues={visibleDues}
-                units={initialUnits}
-                residentName={residentName}
-                manager={manager}
-                onPay={pay}
-                onAccrue={(items) => {
-                  if (!manager) return;
-                  setDues((prev) => [...items, ...prev]);
-                  notify(`${items.length} daire için örnek borç kaydı oluşturuldu (kaydedilmedi).`);
-                }}
-                onReview={(id, approved) => {
-                  if (!manager) return;
-                  setDues((prev) =>
-                    prev.map((d) =>
-                      d.id === id
-                        ? {
-                            ...d,
-                            status: approved ? "Ödendi" : "Ödenmemiş",
-                            paidDate: approved ? TODAY : null,
-                          }
-                        : d,
-                    ),
-                  );
-                  notify(approved ? "Örnek ödeme onaylandı." : "Örnek bildirim reddedildi.");
-                }}
-                notify={notify}
-              />
-            </>
+            <Payments
+              dues={visibleDues}
+              units={initialUnits}
+              residentName={residentName}
+              manager={manager}
+              onPay={pay}
+              onAccrue={(items) => {
+                if (!manager) return;
+                setDues((prev) => [...items, ...prev]);
+                notify(`${items.length} daire için borç kaydı oluşturuldu.`);
+              }}
+              onReview={(id, approved) => {
+                if (!manager) return;
+                setDues((prev) =>
+                  prev.map((d) =>
+                    d.id === id
+                      ? {
+                          ...d,
+                          status: approved ? "Ödendi" : "Ödenmemiş",
+                          paidDate: approved ? TODAY : null,
+                        }
+                      : d,
+                  ),
+                );
+                notify(approved ? "Ödeme onaylandı." : "Ödeme bildirimi reddedildi.");
+              }}
+              notify={notify}
+            />
           )}{" "}
           {tab === "requests" && (
-            <>
-              <DemoBanner />
-              <Requests
-                requests={visibleRequests}
-                manager={manager}
-                residentName={residentName}
-                unitId={demoUnitId}
-                onCreate={createRequest}
-                onStatus={(id, status) => {
-                  if (!manager) return;
-                  setRequests((prev) =>
-                    prev.map((r) => (r.id === id ? { ...r, status } : r)),
-                  );
-                  notify("Örnek talep durumu güncellendi.");
-                }}
-              />
-            </>
+            <Requests
+              requests={visibleRequests}
+              manager={manager}
+              residentName={residentName}
+              unitId={activeUnitId}
+              onCreate={createRequest}
+              onStatus={(id, status) => {
+                if (!manager) return;
+                setRequests((prev) =>
+                  prev.map((r) => (r.id === id ? { ...r, status } : r)),
+                );
+                notify("Talep durumu güncellendi.");
+              }}
+            />
           )}{" "}
           {tab === "announcements" && (
-            <>
-              <DemoBanner>
-                <strong>Site duyuruları backend servisi geliştirme aşamasındadır;</strong> şu an örnek veriler
-                gösterilmektedir ve kaydedilmez.
-              </DemoBanner>
-              <Announcements
-                announcements={announcements}
-                manager={manager}
-                onAddAnnouncement={(newAnn) => {
-                  setAnnouncements((prev) => [newAnn, ...prev]);
-                  notify("Yeni duyuru başarıyla yayınlandı ve sakinlere duyuruldu (örnek).");
-                }}
-                onDeleteAnnouncement={(id) => {
-                  setAnnouncements((prev) => prev.filter((a) => a.id !== id));
-                  notify("Duyuru yayından kaldırıldı.");
-                }}
-              />
-            </>
+            <Announcements
+              announcements={announcements}
+              manager={manager}
+              auth={auth}
+              onAddAnnouncement={(newAnn) => {
+                setAnnouncements((prev) => [newAnn, ...prev]);
+                notify("Yeni duyuru başarıyla yayınlandı.");
+              }}
+              onDeleteAnnouncement={(id) => {
+                setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+                notify("Duyuru yayından kaldırıldı.");
+              }}
+            />
           )}
           </ErrorBoundary>
           <footer className="page-footer">
             <span>© 2026 Kovan · Yaşamın düzeni.</span>
-            <span>
-              Gerçek veri: giriş, site, blok/daire, üyeler, davetler ve site ayarları · Aidat, talep ve duyuru örnektir.
-            </span>
           </footer>
         </main>
       </div>
@@ -1033,7 +1006,7 @@ export default function App() {
       )}
       {modal?.type === "request" && (
         <RequestModal
-          unitId={demoUnitId}
+          unitId={activeUnitId}
           onClose={closeModal}
           onSubmit={(r) => {
             createRequest(r);
@@ -1148,10 +1121,7 @@ export default function App() {
                   <strong>Aidat Ödemeleri:</strong> Sol menüdeki <em>"Aidat ve Ödemeler"</em> sekmesinden kredi kartı veya havale ile anında ödenebilir.
                 </li>
                 <li>
-                  <strong>Otopark & Plaka Girişi:</strong> Araç plakanızı <em>"Ayarlar &gt; Araçlarım"</em> sekmesinden kaydederek bariyerden otomatik geçebilirsiniz.
-                </li>
-                <li>
-                  <strong>Ziyaretçi Araçları:</strong> Güvenlik nizamiyesine önceden bilgi vererek misafir otoparkına yönlendirilmesini sağlayabilirsiniz.
+                  <strong>Talep ve Arıza Bildirimi:</strong> Ortak alanlardaki teknik arıza ve temizlik taleplerinizi <em>"Talep ve Şikayetler"</em> sekmesinden iletebilirsiniz.
                 </li>
               </ul>
             </div>

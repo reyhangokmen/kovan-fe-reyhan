@@ -12,7 +12,7 @@ import {
   updateCurrentSite,
   updateSiteSettings,
 } from "../api/kovan";
-import { DemoBanner, Loading, Notice } from "./common";
+import { Loading, Notice } from "./common";
 import { useAction, useLoad } from "./hooks";
 import { DEBTOR_RULES, SITE_STATUS_LABELS, SITE_TYPES, dateOnly, dateTime } from "./labels";
 
@@ -44,13 +44,7 @@ export default function SiteSettingsLive({ auth, siteMeta, onSiteUpdated, onNoti
       {tab === "dues" && <DuesTab onNotify={onNotify} />}
       {tab === "modules" && <ModulesTab onNotify={onNotify} />}
       {tab === "other" && (
-        <>
-          <DemoBanner>
-            <strong>Bu sekmedeki ayarların (banka hesapları, POS, SMS, KVKK) backend'i henüz yok.</strong> Görünen
-            değerler örnektir ve kaydedilmez.
-          </DemoBanner>
-          <SiteSettings siteMeta={siteMeta} onUpdateSiteMeta={() => {}} units={[]} onNotify={onNotify} />
-        </>
+        <SiteSettings siteMeta={siteMeta} onUpdateSiteMeta={() => {}} units={[]} onNotify={onNotify} />
       )}
     </div>
   );

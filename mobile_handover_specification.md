@@ -178,14 +178,17 @@ Sakin ekranında gereksiz karmaşa ve aile soybağı sorgulamaları kaldırılm�
   - Push Bildirimleri (Mobil anlık bildirimler).
   - SMS Bildirimleri (Acil ve ödeme mesajları).
   - E-posta Özeti (Aylık bülten ve makbuzlar).
-- **Konu Tercihleri:**
-  - Aidat & Finans Hatırlatıcıları.
-  - Talep & Arıza Durum Güncellemeleri.
-  - Yönetim Duyuruları & Toplantılar.
+- **Konu Tercihleri (Yalnızca OPERATIONAL Bildirimler):**
+  - Aidat & Finans Hatırlatıcıları (Açılabilir / Kapatılabilir).
+  - Talep & Arıza Durum Güncellemeleri (Açılabilir / Kapatılabilir).
+  - Yönetim Duyuruları & Toplantılar (Açılabilir / Kapatılabilir).
+- ⚠️ **Kritik Kural (TRANSACTIONAL Bildirimler):**
+  - **Borç İhtarı:** Kat Mülkiyeti Kanunu (KMK) Madde 20 ve yasal icra süreci uyarınca **TRANSACTIONAL** bildirim kategorisindedir. Kullanıcı bildirim tercihlerinden bu bildirimi kapatamaz (`opt-out` edilemez). Kayıtlı SMS ve E-posta adresine zorunlu olarak iletilir.
+  - Güvenlik kodları (OTP) ve Genel Kurul çağrıları da zorunlu TRANSACTIONAL bildirimlerdir.
 
 ### Sekme 4: 🔒 Güvenlik & İzinler
 - **Şifre Değiştirme:** Mevcut şifre, yeni şifre onay alanları.
-- **Ziyaretçi Kabul Onayı:** Güvenlik nizamiyesinden gelen misafir araçlar için cepten anlık onay bildirimi alma tercihi.
+- **Ziyaretçi Kabul Onayı:** Güvenlik nizamiyesinden gelen misafirler için cepten anlık onay bildirimi alma tercihi.
 - **İletişim Gizliliği:** Komşuluk listesinde numaramın gizlenmesini istiyorum anahtarı.
 
 ---
@@ -207,7 +210,7 @@ Mobilde alttan açılan bir **Bottom Sheet** (veya tam ekran dialog) olarak tasa
 │ [🛡️] Güvenlik & Danışma             [7/24 Kesintisiz]   │
 │      Ana Giriş Nizamiyesi                              │
 │      📞 Dahili: 101 (0532 555 99 01)                   │
-│      🕒 Misafir Araç & Kargo Kabulü                    │
+│      🕒 Kargo & Ziyaretçi Kabulü                       │
 ├────────────────────────────────────────────────────────┤
 │ [🔧] Teknik Servis & Arıza Masası       [Dahili: 102]  │
 │      Ortak alan elektrik, hidrofor, asansör ve tesisat │
@@ -220,8 +223,8 @@ Mobilde alttan açılan bir **Bottom Sheet** (veya tam ekran dialog) olarak tasa
 ### 5.2 Hızlı İpuçları & SSS Kutusu (FAQ Box)
 - **Kesik Çizgili (Dashed Border) Vurgu Kutusu:**
   - 💳 **Aidat Ödemeleri:** *"Ödemeler sekmesinden kredi kartı veya havale ile anında ödenebilir."*
-  - 🚗 **Otopark & Bariyer:** *"Plakanızı Ayarlar > Araçlarım sekmesine kaydederek bariyerden otomatik geçebilirsiniz."*
-  - 👥 **Misafirler:** *"Güvenlik nizamiyesine önceden haber vererek misafir otoparkına yönlendirebilirsiniz."*
+  - 🔧 **Teknik Arıza & Talepler:** *"Ortak alanlardaki teknik arıza ve temizlik taleplerinizi Talep ve Şikayetler sekmesinden iletebilirsiniz."*
+  *(Not: K-13 gereği Otopark & PTS Otomasyonu Faz-1 kapsamı dışındadır, Faz-2'de dahil edilecektir.)*
 
 ---
 

@@ -38,12 +38,12 @@ export default function ResidentSettings({
 
   // Sakinin Dairesi
   const residentUnit = units.find((u) => u.id === session?.unitId) || {
-    id: session?.unitId || "A-12",
-    block: session?.unitId?.split("-")[0] || "A",
-    number: session?.unitId?.split("-")[1] || "12",
-    floor: 3,
-    type: "2+1",
-    m2: 95,
+    id: session?.unitId || "",
+    block: session?.unitId?.split("-")[0] || "-",
+    number: session?.unitId?.split("-")[1] || session?.unitId || "-",
+    floor: "-",
+    type: "Daire",
+    m2: "-",
   };
 
   // 1. Profil & İletişim Durumları

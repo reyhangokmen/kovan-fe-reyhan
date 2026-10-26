@@ -125,3 +125,20 @@ Bu doküman; KOVAN Apartman & Site Yönetim Platformu web arayüzünde yer alan 
    - Sakinlerin arıza/talep bildirimi ve yöneticinin durum güncelleme API'si (`GET/POST/PUT /sites/current/requests`) beklenmektedir.
 3. **Duyuru Panosu (`Announcements.jsx`):**
    - Yönetici duyuru yayını ve sakin bildirim servisi (`GET/POST /sites/current/announcements`) beklenmektedir.
+
+---
+
+## 5. Bildirim Mimarisi & Bildirim Analizi (Transactional vs Operational)
+
+KOVAN platformunda sakin ve yöneticilere gönderilen bildirimler yasal ve operasyonel niteliklerine göre iki ana kategoriye ayrılmıştır:
+
+| Bildirim Türü | Kategori | Kanallar | Tercihle Kapatılabilir mi? (Opt-Out) | Hukuki / Operasyonel Dayanak |
+|---|---|---|---|---|
+| **Borç İhtarı** | `TRANSACTIONAL` | SMS + E-posta | ❌ **HAYIR (Kapatılamaz)** | Kat Mülkiyeti Kanunu (KMK) Madde 20 uyarınca geciken aidatlar için icra ve yasal takip öncesi gönderilen resmi ihtardır. Hukuki geçerlilik için kullanıcının bildirim tercihlerinden bağımsız olarak zorunlu iletilir; teslimat ve zaman damgası loglanır. |
+| **Güvenlik Doğrulama Kodu (OTP)** | `TRANSACTIONAL` | E-posta + SMS | ❌ **HAYIR (Kapatılamaz)** | Giriş kilidi, şifre sıfırlama ve telefon doğrulama adımlarında tek seferlik güvenlik anahtarı. |
+| **Daire Başvuru Onay / Ret** | `TRANSACTIONAL` | E-posta + Push | ❌ **HAYIR (Kapatılamaz)** | Yönetici onayına sunulan daire katılım başvurusunun kabul veya ret sonucu. |
+| **Genel Kurul Yasal Çağrısı** | `TRANSACTIONAL` | E-posta + SMS | ❌ **HAYIR (Kapatılamaz)** | KMK Madde 29 gereği olağan ve olağanüstü kat malikleri kurulu toplantı çağrısı ve gündem tebligatı. |
+| **Aylık Aidat Tahakkuk Bilgisi** | `OPERATIONAL` | Push + E-posta | ✅ **EVET (Kullanıcı Tercihine Bağlı)** | Her ay başında yansıtılan olağan aidat borç bilgilendirmesi. |
+| **Talep / Arıza Durum Güncellemesi** | `OPERATIONAL` | Push + SMS | ✅ **EVET (Kullanıcı Tercihine Bağlı)** | Sakinin açtığı arıza talebinin "İnceleniyor", "Tamamlandı" durum değişiklikleri. |
+| **Yönetici Genel Duyurusu** | `OPERATIONAL` | Push + E-posta | ✅ **EVET (Kullanıcı Tercihine Bağlı)** | Asansör bakımı, su kesintisi, temizlik programı gibi blok/site duyuruları (Blok Sorumlusu yalnızca kendi bloğuna gönderebilir). |
+
