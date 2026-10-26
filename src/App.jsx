@@ -22,6 +22,7 @@ import {
   Wrench,
   Mail,
   KeyRound,
+  Plus,
   Sun,
   Moon,
 } from "lucide-react";
@@ -49,6 +50,7 @@ import ApartmentsLive from "./live/ApartmentsLive";
 import RolesLive from "./live/RolesLive";
 import SiteSettingsLive from "./live/SiteSettingsLive";
 import InviteJoinModal from "./live/InviteJoinModal";
+import CreateSiteModal from "./live/CreateSiteModal";
 import { DemoBanner } from "./live/common";
 import { EmailVerifyBanner, SitePicker } from "./live/SessionScreens";
 import { fullName, roleLabel } from "./live/labels";
@@ -151,6 +153,16 @@ export default function App() {
   const profileRef = useRef(null);
 
   useEffect(() => onAuthChange(setAuthState), []);
+
+  useEffect(() => {
+    const handleExpired = () => {
+      setModal(null);
+      setToast("Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.");
+      window.history.pushState({}, "", "/login");
+    };
+    window.addEventListener("kovan:session-expired", handleExpired);
+    return () => window.removeEventListener("kovan:session-expired", handleExpired);
+  }, []);
 
   const inSite = Boolean(auth?.token && auth?.siteId) && !onboardingBusy;
   const manager = inSite && MANAGEMENT_PERMISSIONS.some((p) => can(auth, p));
@@ -421,9 +433,20 @@ export default function App() {
           onSelected={() => setTab("dashboard")}
           onLogout={handleLogout}
           onOpenInvite={() => setModal({ type: "invite" })}
+          onOpenCreateSite={() => setModal({ type: "create-site" })}
         />
         {modal?.type === "invite" && (
           <InviteJoinModal onClose={closeModal} onNotify={notify} onJoined={closeModal} />
+        )}
+        {modal?.type === "create-site" && (
+          <CreateSiteModal
+            onClose={closeModal}
+            onNotify={notify}
+            onCreated={() => {
+              closeModal();
+              setTab("dashboard");
+            }}
+          />
         )}
         {toast && (
           <div className="toast" role="status">
@@ -764,6 +787,22 @@ export default function App() {
                       className="profile-account-item"
                       onClick={() => {
                         setProfileMenuOpen(false);
+                        setModal({ type: "create-site" });
+                      }}
+                    >
+                      <span className="profile-account-icon">
+                        <Plus size={15} />
+                      </span>
+                      <div className="profile-account-details">
+                        <span className="profile-account-title">Yeni Site Aç</span>
+                        <span className="profile-account-sub">Yeni bir apartman veya site oluştur</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      className="profile-account-item"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
                         setModal({ type: "invite" });
                       }}
                     >
@@ -967,6 +1006,16 @@ export default function App() {
           onNotify={notify}
           onJoined={() => {
             closeInvite();
+            closeModal();
+            setTab("dashboard");
+          }}
+        />
+      )}
+      {modal?.type === "create-site" && (
+        <CreateSiteModal
+          onClose={closeModal}
+          onNotify={notify}
+          onCreated={() => {
             closeModal();
             setTab("dashboard");
           }}

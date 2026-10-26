@@ -59,7 +59,7 @@ export default function SiteSettingsLive({ auth, siteMeta, onSiteUpdated, onNoti
 function GeneralTab({ onSiteUpdated, onNotify }) {
   const site = useLoad(getCurrentSite, []);
   const [form, setForm] = useState(null);
-  const { busy, error, run } = useAction();
+  const { busy, error, setError, run } = useAction();
 
   useEffect(() => {
     if (site.data) {
@@ -74,8 +74,13 @@ function GeneralTab({ onSiteUpdated, onNotify }) {
   const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
   const submit = (e) => {
     e.preventDefault();
+    const cleanLogo = form.logoUrl?.trim() || "";
+    if (cleanLogo && !/^https?:\/\//i.test(cleanLogo)) {
+      setError("Logo adresi 'http://' veya 'https://' protokolüyle başlamalıdır.");
+      return;
+    }
     run(async () => {
-      const saved = await updateCurrentSite({ ...form, logoUrl: form.logoUrl.trim() || null });
+      const saved = await updateCurrentSite({ ...form, logoUrl: cleanLogo || null });
       onSiteUpdated?.(saved);
       onNotify?.("Site bilgileri kaydedildi.");
     });

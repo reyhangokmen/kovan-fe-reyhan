@@ -188,7 +188,7 @@ export function ForgotPasswordModal({ onClose, onNotify, onSuccess }) {
     try {
       await resetPassword(email, code.join(""), newPassword);
       setStep(4);
-      onNotify?.("Şifreniz başarıyla yenilendi! Giriş yapabilirsiniz.");
+      onNotify?.("Şifreniz başarıyla yenilendi! Güvenliğiniz için tüm cihazlardaki oturumlar kapatıldı, lütfen giriş yapın.");
     } catch (err) {
       // Kod yanlış/süresi dolmuşsa kullanıcı kod adımına döner (her kod en fazla 3 kez denenebilir).
       if (err.status === 401) {

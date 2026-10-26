@@ -77,3 +77,34 @@ Token'lar `localStorage`'dan `HttpOnly` çerezlere taşındığında, tarayıcı
 3. **API İstemcisi Entegrasyonu:**
    - `client.js` içerisine eklenen `getCsrfToken()` yardımcı fonksiyonu, `XSRF-TOKEN` veya `CSRF-TOKEN` çerezini otomatik yakalar ve istek başlıklarına ekler.
    - `api/proxy.js` sunucusuz proxy fonksiyonu da bu başlığı backend cluster'ına iletir.
+
+---
+
+## 6. Token Yenileme Eşzamanlılığı & Oturum Kapatma Kuralları (Sprint Güncellemesi)
+
+Test ortamındaki oturum yenileme değişiklikleri doğrultusunda frontend mimarisi güncellenmiştir:
+
+### 1. Tek Noktadan Yenileme (Single In-Flight Refresh)
+- **Problem:** Aynı anda birden fazla API isteği 401 aldığında veya aynı `refreshToken` ile aynı anda birden fazla `/auth/refresh` çağrısı giderse backend yalnızca birini kabul eder, diğerlerine 401 döner.
+- **Çözüm:** `src/api/client.js` içerisinde `refreshSession()` çağrıları tek bir Promise (`refreshing`) altında birleştirilmiştir (serialized in-flight refresh).
+- Eşzamanlı gelen tüm 401 istekleri aynı yenileme işlemini bekler. Yenileme tamamlandığında, 401 alan tüm istekler depodaki güncel token (`freshToken`) ile otomatik olarak yeniden denenir (`retry`).
+- İstek esnasında başka bir sekme veya çağrı token'ı zaten yenilemişse (`stored.token !== initialToken`), ağa yeni bir yenileme isteği atmadan doğrudan depodaki güncel token ile istek tekrarlanır.
+
+### 2. Kullanılmış Refresh Token 30 Saniye Kuralı
+- Backend kuralı gereği, kullanılmış bir `refreshToken` 30 saniye sonra tekrar gönderilirse backend oturumu geçersiz kılar ve 401 döner.
+- Frontend, `/auth/refresh` yanıtında 401 aldığında yerel depolamayı ve bellek oturumunu anında sıfırlar (`setAuth(null)`), `kovan:session-expired` olayını fırlatır ve kullanıcıyı doğrudan giriş ekranına (`/login`) yönlendirir.
+
+### 3. Şifre Sıfırlandığında Tüm Cihazların Oturumunun Kapanması
+- Kullanıcı şifresini sıfırladığında (`POST /auth/reset-password`), backend tüm aktif cihaz oturumlarını ve refresh token'larını derhal iptal eder.
+- Frontend'de şifre sıfırlama işlemi tamamlandığında yerel oturum temizlenir (`setAuth(null)`) ve kullanıcı bilgilendirilerek yeni şifresiyle giriş yapmaya yönlendirilir.
+- Diğer cihaz veya sekmelerdeki açık oturumlar ilk API çağrısında 401 alıp yenileme denemesinin de 401 ile reddedilmesi üzerine otomatik olarak sonlandırılır.
+
+### 4. Yeni Uç: POST /sites (Giriş Yapmış Kullanıcı İçin Site Açma)
+- Giriş yapmış (oturum açmış) bir kullanıcı yeni bir site veya apartman oluşturmak istediğinde `POST /sites` uç noktası kullanılır.
+- İstek tamamlandığında kullanıcının site listesi (`reloadWorkspaces()`) yenilenir ve otomatik olarak `POST /auth/switch-site` yapılarak yeni sitenin çalışma alanına geçilir.
+- Arayüzde `SitePicker` ve profil menüsüne **"Yeni Site Aç"** (`CreateSiteModal`) eklenmiştir.
+
+### 5. Logo Adresi Doğrulaması (Yalnızca http/https)
+- Site logosu olarak girilen URL'lerin güvenliği için yalnızca `http://` veya `https://` protokolü kabul edilmektedir (`/^https?:\/\//i`).
+- `CreateSiteModal`, `SiteSettingsLive` ve `kovan.js` API katmanında istemci ve istek seviyesinde zorunlu doğrulama uygulanmıştır.
+

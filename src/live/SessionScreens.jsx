@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Building2, KeyRound, LogOut, MailWarning } from "lucide-react";
+import { ArrowRight, Building2, KeyRound, LogOut, MailWarning, Plus } from "lucide-react";
 import { Brand, Button, Panel } from "../prototype/UI";
 import { errorMessage } from "../api/client";
 import { loadCurrentUser, resendVerification, selectSite, verifyEmail } from "../api/kovan";
@@ -7,7 +7,7 @@ import { Notice } from "./common";
 import { roleLabel } from "./labels";
 
 /** Girişten sonra, birden fazla sitesi olan ya da hiç sitesi olmayan kullanıcı için. */
-export function SitePicker({ auth, onSelected, onLogout, onOpenInvite }) {
+export function SitePicker({ auth, onSelected, onLogout, onOpenInvite, onOpenCreateSite }) {
   const [busySite, setBusySite] = useState(null);
   const [error, setError] = useState("");
   const workspaces = auth.workspaces || [];
@@ -32,8 +32,8 @@ export function SitePicker({ auth, onSelected, onLogout, onOpenInvite }) {
           title={workspaces.length ? "Site seçin" : "Henüz bir siteniz yok"}
           subtitle={
             workspaces.length
-              ? "Birden fazla sitede üyeliğiniz var. Çalışmak istediğiniz siteyi seçin."
-              : "Hesabınız açık ancak henüz aktif bir site üyeliğiniz yok. Daire linkiyle başvurduysanız yönetici onayından sonra siteniz burada görünür."
+              ? "Birden fazla sitede üyeliğiniz var. Çalışmak istediğiniz siteyi seçin veya yeni bir site açın."
+              : "Hesabınız açık ancak henüz aktif bir site üyeliğiniz yok. Yeni bir site açabilir veya davet bağlantısıyla katılabilirsiniz."
           }
         >
           {workspaces.length > 0 && (
@@ -61,6 +61,9 @@ export function SitePicker({ auth, onSelected, onLogout, onOpenInvite }) {
           )}
           <Notice kind="error">{error}</Notice>
           <div className="live-row end mt-3">
+            <Button type="button" onClick={onOpenCreateSite}>
+              <Plus size={15} /> Yeni Site Aç
+            </Button>
             <Button secondary type="button" onClick={onOpenInvite}>
               <KeyRound size={15} /> Davet Bağlantım Var
             </Button>

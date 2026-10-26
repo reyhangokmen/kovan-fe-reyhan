@@ -1,4 +1,4 @@
-import { api, getAuth, publicApi, refreshSession, setAuth, updateAuth } from "./client";
+import { api, ApiError, getAuth, publicApi, refreshSession, setAuth, updateAuth } from "./client";
 
 // ---- Oturum -------------------------------------------------------------------------------------
 
@@ -66,17 +66,74 @@ export async function logout() {
 }
 
 export const forgotPassword = (email) => publicApi("POST", "/auth/forgot-password", { email: email.trim() });
-export const resetPassword = (email, code, newPassword) =>
-  publicApi("POST", "/auth/reset-password", { email: email.trim(), code, newPassword });
+
+/** Şifre sıfırlandığında backend tüm cihazların oturumunu kapatır; mevcut yerel oturum da temizlenir. */
+export async function resetPassword(email, code, newPassword) {
+  const response = await publicApi("POST", "/auth/reset-password", { email: email.trim(), code, newPassword });
+  setAuth(null);
+  return response;
+}
+
 export const verifyEmail = (email, code) => publicApi("POST", "/auth/verify-email", { email: email.trim(), code });
 export const resendVerification = (email) =>
   publicApi("POST", "/auth/resend-verification", { email: email.trim() });
 
 // ---- Site ---------------------------------------------------------------------------------------
 
-export const registerSite = (request) => publicApi("POST", "/sites/register", request);
+/** Logo adresi HTTP veya HTTPS protokolüyle başlamalıdır. */
+export function validateLogoUrl(url) {
+  const clean = (url || "").trim();
+  if (!clean) return true;
+  return /^https?:\/\//i.test(clean);
+}
+
+export const registerSite = (request) => {
+  const siteLogo = request?.site?.logoUrl?.trim();
+  if (siteLogo && !validateLogoUrl(siteLogo)) {
+    throw new ApiError(400, { detail: "Logo adresi 'http://' veya 'https://' protokolüyle başlamalıdır." });
+  }
+  return publicApi("POST", "/sites/register", request);
+};
+
+/**
+ * Giriş yapmış kullanıcının yeni site açması (POST /sites).
+ * Açıldıktan sonra kullanıcının workspaces listesi yenilenir ve yeni siteye geçilir (/auth/switch-site).
+ */
+export async function createSite(siteData) {
+  const cleanLogo = (siteData?.logoUrl || "").trim();
+  if (cleanLogo && !validateLogoUrl(cleanLogo)) {
+    throw new ApiError(400, { detail: "Logo adresi 'http://' veya 'https://' protokolüyle başlamalıdır." });
+  }
+
+  const payload = {
+    name: siteData.name?.trim(),
+    type: siteData.type,
+    city: siteData.city?.trim(),
+    district: siteData.district?.trim(),
+    address: siteData.address?.trim(),
+    ...(cleanLogo ? { logoUrl: cleanLogo } : {}),
+  };
+
+  const created = await api("POST", "/sites", payload);
+  await reloadWorkspaces().catch(() => null);
+  const targetId = created?.id || created?.site?.id || created?.siteId;
+  if (targetId) {
+    await selectSite(targetId).catch(() => null);
+  }
+  return created;
+}
+
 export const getCurrentSite = () => api("GET", "/sites/current");
-export const updateCurrentSite = (request) => api("PUT", "/sites/current", request);
+export const updateCurrentSite = (request) => {
+  const cleanLogo = (request?.logoUrl || "").trim();
+  if (cleanLogo && !validateLogoUrl(cleanLogo)) {
+    throw new ApiError(400, { detail: "Logo adresi 'http://' veya 'https://' protokolüyle başlamalıdır." });
+  }
+  return api("PUT", "/sites/current", {
+    ...request,
+    logoUrl: cleanLogo || null,
+  });
+};
 
 export const getSiteSettings = () => api("GET", "/site-settings");
 export const updateSiteSettings = (request) => api("PUT", "/site-settings", request);

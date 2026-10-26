@@ -9,7 +9,7 @@ Bu doküman; KOVAN Apartman & Site Yönetim Platformu web arayüzünde yer alan 
 | Modül / Ekran | Durum | Veri Kaynağı | Backend Uç Noktaları |
 |---|---|---|---|
 | **Giriş & Oturum** | Canlı (Live) | Gerçek Backend | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/switch-site`, `POST /auth/logout` |
-| **Site Kurulum Sihirbazı** | Canlı (Live) | Gerçek Backend | `POST /sites/register` |
+| **Site Kurulum & Oluşturma** | Canlı (Live) | Gerçek Backend | `POST /sites/register`, `POST /sites` |
 | **Kat ve Daireler** | Canlı (Live) | Gerçek Backend | `GET /sites/current`, `GET/POST /blocks`, `GET/POST /blocks/{id}/units`, `POST /units/{id}/assignments`, `POST /units/{id}/invitation-links`, `GET /sites/current/approvals` |
 | **Rol ve Yetkiler** | Canlı (Live) | Gerçek Backend | `GET /memberships`, `POST /sites/current/board-roles`, `GET/POST/DELETE /invitations`, `GET /sites/current/approvals` |
 | **Site Ayarları (Yönetici)** | Canlı (Live) | Gerçek Backend | `GET/PUT /sites/current`, `GET/PUT /sites/current/settings`, `POST /sites/current/settings/late-fee-rate`, `GET/PUT /sites/current/modules/{key}` |
@@ -37,6 +37,10 @@ Bu doküman; KOVAN Apartman & Site Yönetim Platformu web arayüzünde yer alan 
   - Kod geçerlilik süreleri **5 dakikaya** indirildi.
   - **TCKN** hem backend'den hem frontend arayüzünden tamamen kaldırıldı.
   - **#11 Çıkış Bildirimi:** `POST /auth/logout` uç noktasına refresh token gönderilerek sunucuda oturum geçersiz kılınır.
+  - **Token Yenileme Eşzamanlılığı:** Tek noktadan (single in-flight) yenileme; 401 alan eşzamanlı istekler depodaki güncel token ile yeniden denenir (`retry`).
+  - **Kullanılmış Refresh Token Kuralı:** 30 saniye sonra gönderilen kullanılmış token durumunda ve şifre sıfırlanmasında tüm cihaz oturumları kapatılarak kullanıcı giriş ekranına yönlendirilir.
+  - **Yeni Uç (POST /sites):** Giriş yapmış kullanıcılar için `POST /sites` ucu üzerinden yeni site açma ve ardından `POST /auth/switch-site` akışı.
+  - **Logo Doğrulaması:** Logo adreslerinde yalnızca `http://` ve `https://` protokollerine izin verilir.
 
 ---
 
