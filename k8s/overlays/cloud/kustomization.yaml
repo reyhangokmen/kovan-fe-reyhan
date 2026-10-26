@@ -11,7 +11,7 @@ resources:
 images:
   - name: kovan-fe
     newName: ghcr.io/apartman-yonetim-sistemi/kovan-web
-    newTag: 5428d40 # Her deploy'da commit SHA'si ile guncellenir
+    newTag: 5acf66e # Her deploy'da commit SHA'si ile guncellenir
 
 patches:
   # Tek node'lu, ortak test cluster'i: tek kopya ve kucuk kaynak; imaj ozel GitHub registry'sinden cekilir.
