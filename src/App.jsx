@@ -45,7 +45,7 @@ import {
   TODAY,
 } from "./prototype/data";
 import { getAuth, onAuthChange } from "./api/client";
-import { can, getCurrentSite, listMembers, logout, selectSite } from "./api/kovan";
+import { can, getCurrentSite, listMembers, loadCurrentUser, logout, selectSite } from "./api/kovan";
 import ApartmentsLive from "./live/ApartmentsLive";
 import RolesLive from "./live/RolesLive";
 import SiteSettingsLive from "./live/SiteSettingsLive";
@@ -150,6 +150,12 @@ export default function App() {
   const profileRef = useRef(null);
 
   useEffect(() => onAuthChange(setAuthState), []);
+
+  useEffect(() => {
+    if (auth?.token && !auth?.user) {
+      loadCurrentUser().catch(() => null);
+    }
+  }, [auth?.token, auth?.user]);
 
   useEffect(() => {
     const handleExpired = () => {

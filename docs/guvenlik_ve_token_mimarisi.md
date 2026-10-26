@@ -108,3 +108,53 @@ Test ortamındaki oturum yenileme değişiklikleri doğrultusunda frontend mimar
 - Site logosu olarak girilen URL'lerin güvenliği için yalnızca `http://` veya `https://` protokolü kabul edilmektedir (`/^https?:\/\//i`).
 - `CreateSiteModal`, `SiteSettingsLive` ve `kovan.js` API katmanında istemci ve istek seviyesinde zorunlu doğrulama uygulanmıştır.
 
+---
+
+## 7. Kişisel Verilerin Tarayıcı Deposundan Arındırılması & Çıkış Güvencesi (#11 İyileştirmesi)
+
+### Problem Analizi
+- Kullanıcı tarayıcısında depolanan veriler incelendiğinde, görünen verilerin kullanıcının kendi oturumuna ait olduğu, ancak kişisel profil bilgilerinin (`user: { name, email, phone... }`) `localStorage`'da düz metin olarak durduğu tespit edilmiştir.
+- Ayrıca çıkış yapıldığında (`logout`), access token süresi dolmuşsa `api()` fonksiyonu 401 hatasını yakalayıp gereksiz yere `refreshSession()` çağırıyor, bu da çıkış bildiriminin sunucuya iletilmesini engelleyebiliyordu.
+
+### Uygulanan Düzeltmeler:
+1. **Yalnızca Token Saklama (Storage Sanitization):**
+   - `src/api/client.js` içindeki `setAuth(next)` fonksiyonu revize edildi.
+   - `localStorage` içerisine **yalnızca** oturumu sürdürmek ve yenilemek için zorunlu olan teknik belirteçler (`token`, `refreshToken`, `loginToken`, `siteId`, `roles`, `permissions`, `workspaces`, `systemAdmin`) kaydedilir.
+   - Kullanıcının adı, soyadı, telefon numarası, e-postası ve diğer kişisel verileri (`user` nesnesi) kalıcı depoya **asla yazılmaz**, yalnızca bellekte (React state / in-memory) tutulur.
+   - Sayfa yenilendiğinde (F5) `App.jsx`, `auth.token` varlığını denetleyerek `/auth/me` uç noktasından profili belleğe çeker.
+2. **Çıkışta Kesintisiz Sunucu Bildirimi (Direct Revocation with keepalive):**
+   - `logout()` fonksiyonu, 401 yenileme interceptor döngüsünü tamamen atlamak için doğrudan `publicApi("POST", "/auth/logout", { refreshToken }, token, { keepalive: true })` çağrısı yapar.
+   - `keepalive: true` bayrağı sayesinde kullanıcı sekmeyi anında kapatsa veya yönlendirilse dahi tarayıcı isteği arka planda sunucuya ulaştırır.
+   - Tarayıcının ani sonlandırılması riskine karşı `navigator.sendBeacon` yedeği entegre edilmiştir.
+3. **Kapsamlı Depo Temizliği (Full Storage Purge):**
+   - Çıkış anında `localStorage.removeItem("kovan_auth")`, `localStorage.removeItem("kovan_active_tab")`, `localStorage.removeItem("kovan_users")` ve `sessionStorage.clear()` çağrılarak tarayıcı hafızası sıfırlanır.
+
+---
+
+## 8. Canlı Test Ortamı (DigitalOcean Kubernetes) Dağıtım Analizi
+
+### Test Ortamının 4 Ekim Sürümünde Kalma Nedeni
+- DigitalOcean Kubernetes test kümesinde (`k8s-uniconn-test`, `kovan.universeconn.online`) çalışan servis, `k8s/overlays/cloud/kustomization.yaml` dosyası üzerinden yönetilmektedir.
+- Bu dosyadaki imaj etiketi incelendiğinde:
+  ```yaml
+  images:
+    - name: kovan-fe
+      newName: ghcr.io/apartman-yonetim-sistemi/kovan-web
+      newTag: 5428d40 # Her deploy'da commit SHA'si ile guncellenir
+  ```
+  `5428d40` commit'inin Hakan Tekin tarafından **4 Ekim Pazar 21:10** tarihinde atılan commit olduğu görülmüştür.
+- PR #2 (`BMS-144-ui` -> `BMS-144`) 11 Ekim'den beri açık beklediği ve `newTag` değeri yeni commit SHA'si ile güncellenmediği için canlı test ortamı 4 Ekim imajını sunmaya devam etmiştir.
+
+### Dağıtım Adımları (Deployment Runbook):
+1. **İmaj Oluşturma & Registry Push:**
+   ```bash
+   docker build -t ghcr.io/apartman-yonetim-sistemi/kovan-web:<YENI_COMMIT_SHA> .
+   docker push ghcr.io/apartman-yonetim-sistemi/kovan-web:<YENI_COMMIT_SHA>
+   ```
+2. **Kustomize Etiket Güncellemesi:**
+   - `k8s/overlays/cloud/kustomization.yaml` dosyasındaki `newTag` değeri `<YENI_COMMIT_SHA>` olarak güncellenir.
+3. **Kümeye Uygulama:**
+   ```bash
+   kubectl apply -k k8s/overlays/cloud
+   ```
+

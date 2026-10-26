@@ -1,4 +1,4 @@
-import { api, ApiError, getAuth, publicApi, refreshSession, setAuth, updateAuth } from "./client";
+import { BASE_URL, api, ApiError, getAuth, publicApi, refreshSession, setAuth, updateAuth } from "./client";
 
 // ---- Oturum -------------------------------------------------------------------------------------
 
@@ -55,11 +55,24 @@ export async function reloadWorkspaces() {
 
 export async function logout() {
   const current = getAuth();
-  if (current?.refreshToken) {
+  const refreshToken = current?.refreshToken;
+  const token = current?.token;
+
+  if (refreshToken) {
     try {
-      await api("POST", "/auth/logout", { refreshToken: current.refreshToken });
+      // #11 Sunucu Bildirimi ile Çıkış: 401 yenileme döngüsüne girmeden doğrudan bildirim yapılır.
+      // keepalive: true ile sayfa hemen kapansa veya yönlense dahi istek sunucuya eksiksiz ulaşır.
+      await publicApi("POST", "/auth/logout", { refreshToken }, token, { keepalive: true });
     } catch {
-      // Sunucuya ulaşılamasa veya oturum zaten geçersiz olsa dahi yerel oturum temizlenir
+      // Beacon yedeği: Ağ kopukluğu veya tarayıcı ani kapanışında garanti gönderim
+      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+        try {
+          const blob = new Blob([JSON.stringify({ refreshToken })], { type: "application/json" });
+          navigator.sendBeacon(`${BASE_URL}/auth/logout`, blob);
+        } catch {
+          // ignore
+        }
+      }
     }
   }
   setAuth(null);

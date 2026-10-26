@@ -2,7 +2,7 @@
 // süresi dolan erişim token'ı bir kez yenilenir ve seçili site için yeniden yetki alınır.
 
 const isVercel = typeof window !== "undefined" && window.location.hostname.includes("vercel.app");
-const BASE_URL = (
+export const BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
   (isVercel ? "/api-proxy" : "https://kovanbe.universeconn.online")
 ).replace(/\/$/, "");
@@ -50,8 +50,30 @@ export function getAuth() {
 export function setAuth(next) {
   auth = next;
   try {
-    if (next) localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    else localStorage.removeItem(STORAGE_KEY);
+    if (next) {
+      // #11: Sadece oturum ve token bilgileri localStorage'da tutulur.
+      // Kişisel profil ve kullanıcı verileri (ad, soyad, telefon, e-posta vb.)
+      // yerel depoda düz metin olarak bırakılmaz; sadece bellekte (in-memory) tutulur.
+      const sanitized = {
+        loginToken: next.loginToken,
+        token: next.token,
+        refreshToken: next.refreshToken,
+        siteId: next.siteId,
+        siteName: next.siteName,
+        roles: next.roles,
+        permissions: next.permissions,
+        workspaces: next.workspaces,
+        systemAdmin: next.systemAdmin,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem("kovan_active_tab");
+      localStorage.removeItem("kovan_users");
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.clear();
+      }
+    }
   } catch {
     // depolama kapalıysa oturum yalnızca bu sekmede yaşar
   }
@@ -91,7 +113,7 @@ function getCsrfToken() {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-async function send(method, path, body, token) {
+export async function send(method, path, body, token, options = {}) {
   let response;
   const csrfToken = getCsrfToken();
   const isMutating = !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
@@ -100,10 +122,12 @@ async function send(method, path, body, token) {
     response = await fetch(BASE_URL + path, {
       method,
       credentials: "same-origin",
+      keepalive: Boolean(options?.keepalive),
       headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(csrfToken && isMutating ? { "X-XSRF-TOKEN": csrfToken } : {}),
+        ...options?.headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
@@ -252,9 +276,9 @@ export async function api(method, path, body) {
   }
 }
 
-/** Oturum gerektirmeyen istek (giriş, kayıt, şifre sıfırlama, davet önizleme). */
-export function publicApi(method, path, body) {
-  return send(method, path, body);
+/** Oturum gerektirmeyen veya doğrudan token ile yapılan istek (giriş, kayıt, şifre sıfırlama, çıkış bildirimi). */
+export function publicApi(method, path, body, token, options) {
+  return send(method, path, body, token, options);
 }
 
 export { refreshSession };

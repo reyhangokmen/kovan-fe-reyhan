@@ -648,8 +648,8 @@ function calculateLateFee(debtAmount, dueDateStr, monthlyRatePercent = 5) {
   Kimlik doğrulama mimarisi JWT Access Token (kısa ömürlü) ve Refresh Token (uzun ömürlü, Beni Hatırla ile 90 gün) yapısına dayanır.
 </p>
 <ul>
-  <li><strong>Oturum Depolama Güvenliği:</strong> İstemci tarafında oturum <code>localStorage</code> deposunda <code>kovan_auth</code> altında tutulur. Depolamanın engellendiği durumlarda bellek içi (in-memory) güvenli state kullanılır.</li>
-  <li><strong>Sunucu Bildirimi ile Çıkış (Logout Revocation):</strong> <code>src/api/kovan.js</code> içindeki <code>logout()</code> fonksiyonu, oturum kapatıldığında <code>POST /auth/logout</code> uç noktasına <code>{ refreshToken }</code> gönderir. Backend refresh token'ı kara listeye alarak geçersiz kılar (204 No Content). Böylece istemciden silinen token'ın kötü niyetli kişilerce sunucuda tekrar kullanılması engellenir.</li>
+  <li><strong>Oturum Depolama &amp; Kişisel Veri Güvenliği (Storage Sanitization):</strong> İstemci tarafında <code>localStorage</code> deposunda <code>kovan_auth</code> altında <strong>yalnızca</strong> teknik oturum belirteçleri (<code>token</code>, <code>refreshToken</code>, <code>siteId</code>, <code>roles</code>, <code>permissions</code>, <code>workspaces</code>) saklanır. Kullanıcının adı, soyadı, telefon numarası ve e-postası gibi hassas kişisel profil bilgileri (PII) tarayıcı diskine yazılmaz; yalnızca bellekte (React state / in-memory) tutulur ve sayfa yenilendiğinde <code>/auth/me</code> üzerinden güvenle çekilir.</li>
+  <li><strong>Doğrudan Sunucu Bildirimi ile Çıkış (Guaranteed Logout Revocation):</strong> <code>src/api/kovan.js</code> içindeki <code>logout()</code> fonksiyonu, oturum kapatıldığında 401 yenileme interceptor döngüsüne girmeksizin doğrudan <code>POST /auth/logout</code> uç noktasına <code>{ refreshToken }</code> gönderir. İstek <code>keepalive: true</code> bayrağıyla atıldığı için sekme kapansa bile sunucuya ulaşır; ani kapanışlar için <code>navigator.sendBeacon</code> yedeği mevcuttur. Çıkış anında <code>kovan_auth</code>, <code>kovan_active_tab</code>, <code>kovan_users</code> ve <code>sessionStorage</code> tamamen sıfırlanır (Full Storage Purge).</li>
   <li><strong>Kurumsal Güvenlik Başlıkları (CSP):</strong> <code>vercel.json</code> ve <code>index.html</code> dosyalarına XSS, Clickjacking ve veri sızıntılarını engelleyen kurumsal HTTP başlıkları eklenmiştir:
     <ul>
       <li><code>Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://kovanbe.universeconn.online https://*.vercel.app;</code></li>
@@ -779,10 +779,11 @@ function calculateLateFee(debtAmount, dueDateStr, monthlyRatePercent = 5) {
   </tbody>
 </table>
 
-<h2>5.6 Altyapı Çözümleri: Vercel Serverless Proxy ve Pull Request (#2)</h2>
+<h2>5.6 Altyapı Çözümleri: Vercel Serverless Proxy, K8s Dağıtımı ve Pull Request (#2)</h2>
 <ul>
   <li><strong>Vercel CORS Proxy Mimarisi (<code>api/proxy.js</code>):</strong> Canlı Spring Boot backend'i yalnızca kendi alan adını kabul ettiği için Vercel'den gelen tarayıcı isteklerinde <code>403 Invalid CORS request</code> dönüyordu. Vercel üzerinde çalışan özel bir Serverless Proxy yazılarak isteklerin arka planda <code>Origin: https://kovan.universeconn.online</code> ile iletilmesi sağlandı ve CORS engeli tamamen aşıldı.</li>
   <li><strong>Rol ve Yetkiler Panel Düzenlemesi:</strong> Kurul üyesi ata formunun kenarlara yapışması 24px padding ile çözüldü; Ata/Davet Et butonundaki boş etiket kaldırılarak buton tabana (<code>align-items: flex-end</code>) ve 42px yüksekliğe eşitlendi.</li>
+  <li><strong>DigitalOcean K8s Test Kümesi &amp; 4 Ekim Sürümü Nedeni:</strong> Canlı test ortamının (<code>kovan.universeconn.online</code>) 4 Ekim sürümünde kalmasının sebebi, <code>k8s/overlays/cloud/kustomization.yaml</code> dosyasında <code>newTag: 5428d40</code> (4 Ekim commit'i) etiketinin tanımlı olması ve PR #2'nin birleştirilmeyi beklemesidir. Yeni derlenen Docker imajının commit SHA'si ile <code>newTag</code> güncellenerek <code>kubectl apply -k k8s/overlays/cloud</code> komutuyla test ortamı saniyeler içinde en son sürüme taşınabilir.</li>
   <li><strong>Pull Request #2:</strong> Tüm geliştirmeler <code>BMS-144-ui</code> dalından ekip ana dalı olan <code>BMS-144</code>'e GitHub üzerinden PR #2 olarak açıldı ve entegrasyona hazır hale getirildi.</li>
 </ul>
 
