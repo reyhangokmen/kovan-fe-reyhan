@@ -1,8 +1,12 @@
 // KOVAN backend ile konuşan tek yer. Oturum (token, seçili site, izinler) bellekte tutulur;
 // süresi dolan erişim token'ı bir kez yenilenir ve seçili site için yeniden yetki alınır.
 
+const isVercel = typeof window !== "undefined" && window.location.hostname.includes("vercel.app");
+const isWhitelistedVercel = typeof window !== "undefined" && window.location.hostname === "kovan-site.vercel.app";
+
 export const BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "https://kovanbe.universeconn.online"
+  import.meta.env.VITE_API_BASE_URL ||
+  (isVercel && !isWhitelistedVercel ? "" : "https://kovanbe.universeconn.online")
 ).replace(/\/$/, "");
 
 const SITE_KEY = "kovan_selected_site";

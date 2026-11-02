@@ -1,8 +1,9 @@
 export default async function handler(req, res) {
-  // CORS başlıkları: tarayıcıdan gelen isteklere her zaman açık
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  // CORS başlıkları
+  res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "*");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();
@@ -14,8 +15,8 @@ export default async function handler(req, res) {
     if (!path) {
       if (parsed.pathname.startsWith("/api-proxy")) {
         path = parsed.pathname.replace(/^\/api-proxy\/?/, "");
-      } else if (req.headers["x-matched-path"]) {
-        path = req.headers["x-matched-path"].replace(/^\/api-proxy\/?/, "");
+      } else {
+        path = parsed.pathname.replace(/^\//, "");
       }
     }
     parsed.searchParams.delete("__path");
@@ -27,12 +28,13 @@ export default async function handler(req, res) {
 
     const forwardHeaders = {
       host: "kovanbe.universeconn.online",
-      origin: "https://kovan.universeconn.online",
+      origin: "https://kovan-site.vercel.app",
     };
     if (req.headers["content-type"]) forwardHeaders["content-type"] = req.headers["content-type"];
     if (req.headers["authorization"]) forwardHeaders["authorization"] = req.headers["authorization"];
     if (req.headers["accept"]) forwardHeaders["accept"] = req.headers["accept"];
     if (req.headers["x-xsrf-token"]) forwardHeaders["x-xsrf-token"] = req.headers["x-xsrf-token"];
+    if (req.headers["cookie"]) forwardHeaders["cookie"] = req.headers["cookie"];
 
     let bodyData = undefined;
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -61,6 +63,13 @@ export default async function handler(req, res) {
     if (contentType) res.setHeader("content-type", contentType);
     const retryAfter = backendRes.headers.get("retry-after");
     if (retryAfter) res.setHeader("retry-after", retryAfter);
+
+    const setCookies = typeof backendRes.headers.getSetCookie === "function"
+      ? backendRes.headers.getSetCookie()
+      : backendRes.headers.get("set-cookie");
+    if (setCookies) {
+      res.setHeader("set-cookie", setCookies);
+    }
 
     res.send(text);
   } catch (err) {

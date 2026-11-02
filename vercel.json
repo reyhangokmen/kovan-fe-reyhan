@@ -37,7 +37,35 @@
   "rewrites": [
     {
       "source": "/auth/:path*",
-      "destination": "https://kovanbe.universeconn.online/auth/:path*"
+      "destination": "/api/proxy?__path=auth/:path*"
+    },
+    {
+      "source": "/sites/:path*",
+      "destination": "/api/proxy?__path=sites/:path*"
+    },
+    {
+      "source": "/site-settings/:path*",
+      "destination": "/api/proxy?__path=site-settings/:path*"
+    },
+    {
+      "source": "/site-modules/:path*",
+      "destination": "/api/proxy?__path=site-modules/:path*"
+    },
+    {
+      "source": "/blocks/:path*",
+      "destination": "/api/proxy?__path=blocks/:path*"
+    },
+    {
+      "source": "/units/:path*",
+      "destination": "/api/proxy?__path=units/:path*"
+    },
+    {
+      "source": "/memberships/:path*",
+      "destination": "/api/proxy?__path=memberships/:path*"
+    },
+    {
+      "source": "/invitations/:path*",
+      "destination": "/api/proxy?__path=invitations/:path*"
     },
     {
       "source": "/api-proxy/:match*",
