@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Ban, Mail, RefreshCw, RotateCcw, Send, Shield, Undo2 } from "lucide-react";
+import { Ban, Mail, RefreshCw, RotateCcw, Send, Undo2 } from "lucide-react";
 import { Button, Empty, Field, Panel } from "../prototype/UI";
 import {
   assignBoardRole,
@@ -35,14 +35,11 @@ export default function RolesLive({ auth, onNotify }) {
       <div className="module-actions">
         <div>
           <p>Sitedeki üyeleri ve rollerini görün; yönetim/denetim kurulu atayın ve gönderilen davetleri yönetin.</p>
-          <div className="live-row mt-2">
-            <span className="live-muted">Bu sitedeki yetkileriniz:</span>
-            {(auth.roles || []).map((r) => (
-              <span key={r} className="live-chip gold">
-                <Shield size={11} /> {roleLabel(r)}
-              </span>
-            ))}
-          </div>
+          {auth?.siteName && (
+            <div className="live-row mt-2">
+              <span className="live-muted">Aktif site: <strong>{auth.siteName}</strong></span>
+            </div>
+          )}
         </div>
         <Button secondary onClick={refresh}>
           <RefreshCw size={15} /> Yenile

@@ -1,4 +1,4 @@
-import { BASE_URL, api, ApiError, getAuth, publicApi, refreshSession, setAuth, updateAuth } from "./client";
+import { BASE_URL, api, ApiError, getAuth, publicApi, refreshSession, saveSelectedSite, setAuth, updateAuth } from "./client";
 
 // ---- Oturum -------------------------------------------------------------------------------------
 
@@ -8,35 +8,31 @@ import { BASE_URL, api, ApiError, getAuth, publicApi, refreshSession, setAuth, u
 export async function login(email, password, rememberMe = false) {
   const response = await publicApi("POST", "/auth/login", { email: email.trim(), password, rememberMe });
   setAuth({
-    loginToken: response.token,
     token: response.token,
-    refreshToken: response.refreshToken,
-    systemAdmin: response.systemAdmin,
-    workspaces: response.workspaces,
+    workspaces: response.workspaces || [],
     siteId: null,
-    roles: [],
     permissions: [],
     user: { email: email.trim() },
   });
   // Profil yüklenemezse giriş bozulmasın; ekranda e-posta gösterilir.
   await loadCurrentUser().catch(() => null);
-  if (response.workspaces.length === 1) {
+  if (response.workspaces?.length === 1) {
     await selectSite(response.workspaces[0].siteId);
   }
   return getAuth();
 }
 
-/** Seçilen sitedeki rol ve izinleri taşıyan token alınır; site işlemleri bu token ile yapılır. */
+/** Seçilen sitedeki izinleri taşıyan token alınır; site işlemleri bu token ile yapılır. */
 export async function selectSite(siteId) {
   const current = getAuth();
   const response = await api("POST", "/auth/switch-site", { siteId });
-  const workspace = current.workspaces?.find((w) => w.siteId === siteId);
+  const workspace = current?.workspaces?.find((w) => w.siteId === siteId);
+  saveSelectedSite(siteId);
   updateAuth({
     token: response.token,
-    siteId: response.siteId,
-    siteName: workspace?.siteName || current.siteName,
-    roles: response.roles,
-    permissions: response.permissions,
+    siteId,
+    siteName: workspace?.siteName || current?.siteName,
+    permissions: response.permissions || [],
   });
   return getAuth();
 }
@@ -55,28 +51,27 @@ export async function reloadWorkspaces() {
 
 export async function logout() {
   const current = getAuth();
-  const refreshToken = current?.refreshToken;
   const token = current?.token;
 
-  if (refreshToken) {
-    try {
-      // #11 Sunucu Bildirimi ile Çıkış: 401 yenileme döngüsüne girmeden doğrudan bildirim yapılır.
-      // keepalive: true ile sayfa hemen kapansa veya yönlense dahi istek sunucuya eksiksiz ulaşır.
-      await publicApi("POST", "/auth/logout", { refreshToken }, token, { keepalive: true });
-    } catch {
-      // Beacon yedeği: Ağ kopukluğu veya tarayıcı ani kapanışında garanti gönderim
-      if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-        try {
-          const blob = new Blob([JSON.stringify({ refreshToken })], { type: "application/json" });
-          navigator.sendBeacon(`${BASE_URL}/auth/logout`, blob);
-        } catch {
-          // ignore
-        }
+  try {
+    // 7. Çıkış: önce POST /auth/logout çağrılır (gövdesiz, credentials include, varsa Authorization: Bearer <token>)
+    await publicApi("POST", "/auth/logout", undefined, token, { keepalive: true });
+  } catch {
+    // Beacon yedeği: gövdesiz çerez gönderimi
+    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+      try {
+        navigator.sendBeacon(`${BASE_URL}/auth/logout`);
+      } catch {
+        // ignore
       }
     }
+  } finally {
+    setAuth(null);
   }
-  setAuth(null);
 }
+
+export const changePassword = (currentPassword, newPassword) =>
+  api("POST", "/auth/change-password", { currentPassword, newPassword });
 
 export const forgotPassword = (email) => publicApi("POST", "/auth/forgot-password", { email: email.trim() });
 
@@ -211,4 +206,3 @@ export const requestPhoneChangeCode = (phone) =>
   api("POST", "/auth/me/phone/code", { phone: (phone || "").trim() });
 export const verifyPhoneChange = (phone, code) =>
   api("POST", "/auth/me/phone", { phone: (phone || "").trim(), code: (code || "").trim() });
-

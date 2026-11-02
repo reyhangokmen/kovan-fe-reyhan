@@ -36,6 +36,10 @@
   ],
   "rewrites": [
     {
+      "source": "/auth/:path*",
+      "destination": "https://kovanbe.universeconn.online/auth/:path*"
+    },
+    {
       "source": "/api-proxy/:match*",
       "destination": "/api/proxy?__path=:match*"
     },

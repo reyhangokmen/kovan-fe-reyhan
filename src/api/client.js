@@ -1,12 +1,11 @@
-// KOVAN backend ile konuşan tek yer. Oturum (token'lar, seçili site, izinler) burada tutulur;
+// KOVAN backend ile konuşan tek yer. Oturum (token, seçili site, izinler) bellekte tutulur;
 // süresi dolan erişim token'ı bir kez yenilenir ve seçili site için yeniden yetki alınır.
 
-const isVercel = typeof window !== "undefined" && window.location.hostname.includes("vercel.app");
 export const BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ||
-  (isVercel ? "/api-proxy" : "https://kovanbe.universeconn.online")
+  import.meta.env.VITE_API_BASE_URL || "https://kovanbe.universeconn.online"
 ).replace(/\/$/, "");
-const STORAGE_KEY = "kovan_auth";
+
+const SITE_KEY = "kovan_selected_site";
 
 export class ApiError extends Error {
   constructor(status, problem, retryAfter) {
@@ -30,54 +29,88 @@ export function errorMessage(error) {
   return error?.message || "Beklenmeyen bir hata oluştu";
 }
 
-// Not: Token'lar tarayıcı deposunda tutuluyor (prototip). Canlı öncesi refresh token'ın
-// httpOnly çerezde tutulması ekip kararı olarak değerlendirilmeli.
-let auth = load();
-const listeners = new Set();
-
-function load() {
+export function saveSelectedSite(siteId) {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null;
+    if (siteId) {
+      localStorage.setItem(SITE_KEY, siteId);
+    } else {
+      localStorage.removeItem(SITE_KEY);
+    }
+  } catch {
+    // depolama kapalıysa yoksay
+  }
+}
+
+export function loadSelectedSite() {
+  try {
+    return localStorage.getItem(SITE_KEY) || null;
   } catch {
     return null;
   }
+}
+
+export function clearSelectedSite() {
+  try {
+    localStorage.removeItem(SITE_KEY);
+  } catch {
+    // yoksay
+  }
+}
+
+// Token'lar ve kullanıcı bilgileri asla localStorage/sessionStorage'a yazılmaz; yalnız bellekte tutulur.
+let auth = null;
+const listeners = new Set();
+
+const authChannel =
+  typeof window !== "undefined" && typeof BroadcastChannel !== "undefined"
+    ? new BroadcastChannel("kovan-auth")
+    : null;
+
+if (authChannel) {
+  authChannel.onmessage = (event) => {
+    const data = event.data;
+    if (data?.type === "logout") {
+      setAuth(null, false);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("kovan:session-expired"));
+      }
+    } else if (data?.type === "auth" && data.auth) {
+      setAuth(data.auth, false);
+    }
+  };
 }
 
 export function getAuth() {
   return auth;
 }
 
-export function setAuth(next) {
+export function setAuth(next, broadcast = true) {
   auth = next;
-  try {
-    if (next) {
-      // #11: Sadece oturum ve token bilgileri localStorage'da tutulur.
-      // Kişisel profil ve kullanıcı verileri (ad, soyad, telefon, e-posta vb.)
-      // yerel depoda düz metin olarak bırakılmaz; sadece bellekte (in-memory) tutulur.
-      const sanitized = {
-        loginToken: next.loginToken,
-        token: next.token,
-        refreshToken: next.refreshToken,
-        siteId: next.siteId,
-        siteName: next.siteName,
-        roles: next.roles,
-        permissions: next.permissions,
-        workspaces: next.workspaces,
-        systemAdmin: next.systemAdmin,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
+  if (!next) {
+    clearSelectedSite();
+    try {
+      localStorage.removeItem("kovan_auth");
       localStorage.removeItem("kovan_active_tab");
       localStorage.removeItem("kovan_users");
       if (typeof sessionStorage !== "undefined") {
         sessionStorage.clear();
       }
+    } catch {
+      // depolama kapalıysa yoksay
     }
-  } catch {
-    // depolama kapalıysa oturum yalnızca bu sekmede yaşar
   }
   listeners.forEach((listener) => listener(auth));
+  if (broadcast && authChannel) {
+    try {
+      if (next) {
+        authChannel.postMessage({ type: "auth", auth: next });
+      } else {
+        authChannel.postMessage({ type: "logout" });
+      }
+    } catch {
+      // yoksay
+    }
+  }
 }
 
 export function updateAuth(patch) {
@@ -89,24 +122,6 @@ export function onAuthChange(listener) {
   return () => listeners.delete(listener);
 }
 
-// Sekmeler arası oturum senkronizasyonu: Başka bir sekmede çıkış yapılır veya token yenilenirse
-if (typeof window !== "undefined") {
-  window.addEventListener("storage", (event) => {
-    if (event.key === STORAGE_KEY) {
-      auth = load();
-      listeners.forEach((listener) => listener(auth));
-      if (!auth) {
-        window.dispatchEvent(new CustomEvent("kovan:session-expired"));
-      }
-    }
-  });
-}
-
-/**
- * #62: CSRF Güvenliği (Token çereze taşındığında otomatik koruma):
- * Backend veya gateway tarafından bırakılan okunabilir XSRF-TOKEN / CSRF-TOKEN çerezini okur ve
- * durum değiştiren (POST, PUT, DELETE, PATCH) isteklerde X-XSRF-TOKEN başlığı olarak gönderir.
- */
 function getCsrfToken() {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(/(?:^|;\s*)(?:XSRF-TOKEN|CSRF-TOKEN)=([^;]+)/);
@@ -121,7 +136,7 @@ export async function send(method, path, body, token, options = {}) {
   try {
     response = await fetch(BASE_URL + path, {
       method,
-      credentials: "same-origin",
+      credentials: "include",
       keepalive: Boolean(options?.keepalive),
       headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
@@ -151,82 +166,79 @@ let refreshing = null;
 
 /**
  * Oturum yenilemeyi tek bir noktada toplar.
+ * Refresh token HttpOnly çerezdedir; gövde gönderilmez.
  * Aynı anda birden fazla istek 401 alsa dahi yalnızca TEK BİR /auth/refresh isteği gider.
- * Diğer tüm istekler bu tek yenilemeyi bekler ve depodaki güncel token ile tekrar dener.
- *
- * Backend kuralı:
- * - Aynı refreshToken ile aynı anda birden fazla /auth/refresh giderse yalnız biri başarılı olur, diğerleri 401 alır.
- * - Kullanılmış bir refreshToken 30 sn sonra tekrar gönderilirse o cihazın oturumu kapatılır (401 döner).
- * - Şifre sıfırlandığında tüm cihazların oturumu kapatılır (401 döner).
  */
-function refreshSession() {
+export function refreshSession() {
   if (refreshing) {
     return refreshing;
   }
 
-  // Depodaki refreshToken bellektekine göre zaten güncellenmişse ağa gitmeden depodakiyle devam et
-  const stored = load();
-  if (stored?.refreshToken && auth?.refreshToken && stored.refreshToken !== auth.refreshToken) {
-    auth = stored;
-    listeners.forEach((listener) => listener(auth));
-    return Promise.resolve(auth);
-  }
-
   refreshing = (async () => {
-    const current = load() || auth;
-    if (!current?.refreshToken) {
-      setAuth(null);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("kovan:session-expired"));
+    let login;
+    try {
+      login = await send("POST", "/auth/refresh");
+    } catch (err) {
+      // İki sekme aynı anda yenilerse biri 401 alabilir; 30 sn tolerans içinde bir kez tekrar denenir
+      if (err?.status === 401) {
+        try {
+          login = await send("POST", "/auth/refresh");
+        } catch (retryErr) {
+          setAuth(null);
+          throw retryErr;
+        }
+      } else {
+        setAuth(null);
+        throw err;
       }
-      throw new ApiError(401, {
-        detail: "Oturum bulunamadı, lütfen tekrar giriş yapın.",
-        code: "SESSION_EXPIRED",
-      });
     }
 
-    try {
-      const login = await send("POST", "/auth/refresh", { refreshToken: current.refreshToken });
-      let next = {
-        ...current,
-        loginToken: login.token,
-        token: login.token,
-        refreshToken: login.refreshToken,
-        workspaces: login.workspaces,
-        systemAdmin: login.systemAdmin,
-      };
-      if (current.siteId) {
-        try {
-          const site = await send("POST", "/auth/switch-site", { siteId: current.siteId }, login.token);
-          next = { ...next, token: site.token, roles: site.roles, permissions: site.permissions };
-        } catch {
-          // Site switch başarısız olsa da ana token geçerlidir
-        }
+    let next = {
+      ...auth,
+      token: login.token,
+      workspaces: login.workspaces || [],
+    };
+
+    const siteId = auth?.siteId ?? loadSelectedSite();
+    if (siteId && login.workspaces?.some((w) => w.siteId === siteId)) {
+      try {
+        const site = await send("POST", "/auth/switch-site", { siteId }, login.token);
+        const ws = login.workspaces.find((w) => w.siteId === siteId);
+        next = {
+          ...next,
+          token: site.token,
+          siteId,
+          siteName: ws?.siteName || auth?.siteName,
+          permissions: site.permissions || [],
+        };
+        saveSelectedSite(siteId);
+      } catch {
+        // switch-site başarısız olsa da ana token geçerlidir
       }
-      setAuth(next);
-      return next;
-    } catch (err) {
-      // 401 veya geçersiz token durumunda (kullanılmış refreshToken 30 sn aşımı, şifre sıfırlama, oturum sonu):
-      // Cihazın oturumu derhal kapatılır ve kullanıcı giriş ekranına yönlendirilir.
-      setAuth(null);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("kovan:session-expired", { detail: err }));
-      }
-      throw new ApiError(401, {
-        detail: "Oturumunuzun süresi doldu veya oturum sonlandırıldı. Lütfen tekrar giriş yapın.",
-        code: "SESSION_EXPIRED",
-      });
-    } finally {
-      refreshing = null;
+    } else {
+      next = { ...next, siteId: null, permissions: [] };
+      clearSelectedSite();
     }
-  })();
+
+    setAuth(next);
+    return next;
+  })().finally(() => {
+    refreshing = null;
+  });
 
   return refreshing;
 }
 
-/** Oturum gerektiren istek: 401 durumunda depodaki güncel token'la dener veya merkezi yenileme yapar. */
+export async function bootstrapSession() {
+  try {
+    await refreshSession();
+  } catch {
+    setAuth(null);
+  }
+}
+
+/** Oturum gerektiren istek: 401 durumunda tek merkezden bir yenileme yapar ve isteği tekrarlar. */
 export async function api(method, path, body) {
-  if (!auth) auth = load();
   const initialToken = auth?.token;
 
   try {
@@ -234,32 +246,10 @@ export async function api(method, path, body) {
   } catch (error) {
     if (error.status !== 401 || !initialToken) throw error;
 
-    // 1. İstek ağdayken başka bir istek veya sekme token'ı çoktan yenilemiş olabilir.
-    // Depodaki güncel token'ı kontrol et:
-    const stored = load();
-    if (stored?.token && stored.token !== initialToken) {
-      auth = stored;
-      try {
-        // 401 alan istek depodaki güncel token'la tekrar denensin:
-        return await send(method, path, body, stored.token);
-      } catch (retryError) {
-        if (retryError.status !== 401) throw retryError;
-        // Eğer depodaki güncel token da 401 aldıysa merkezi yenilemeyi başlat/bekle
-      }
-    }
-
-    if (!auth?.refreshToken && !stored?.refreshToken) {
-      setAuth(null);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("kovan:session-expired"));
-      }
-      throw error;
-    }
-
-    // 2. Merkezi yenilemeyi çağır (aynı anda gelen tüm 401 istekleri TEK bir /auth/refresh bekler)
+    // Merkezi yenilemeyi çağır (aynı anda gelen tüm 401 istekleri TEK bir refresh bekler)
     try {
       await refreshSession();
-    } catch (refreshErr) {
+    } catch {
       setAuth(null);
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("kovan:session-expired"));
@@ -270,9 +260,8 @@ export async function api(method, path, body) {
       });
     }
 
-    // 3. Yenileme tamamlandı: Depodaki güncel token ile isteği tekrar dene
-    const freshAuth = load() || auth;
-    return send(method, path, body, freshAuth?.token);
+    // Yenileme tamamlandı: Güncel token ile isteği bir kez tekrar dene
+    return send(method, path, body, auth?.token);
   }
 }
 
@@ -280,5 +269,3 @@ export async function api(method, path, body) {
 export function publicApi(method, path, body, token, options) {
   return send(method, path, body, token, options);
 }
-
-export { refreshSession };

@@ -4,7 +4,6 @@ import { Brand, Button, Panel } from "../prototype/UI";
 import { errorMessage } from "../api/client";
 import { loadCurrentUser, resendVerification, selectSite, verifyEmail } from "../api/kovan";
 import { Notice } from "./common";
-import { roleLabel } from "./labels";
 
 /** Girişten sonra, birden fazla sitesi olan ya da hiç sitesi olmayan kullanıcı için. */
 export function SitePicker({ auth, onSelected, onLogout, onOpenInvite, onOpenCreateSite }) {
@@ -50,8 +49,6 @@ export function SitePicker({ auth, onSelected, onLogout, onOpenInvite, onOpenCre
                     <Building2 size={18} className="text-gold" />
                     <span>
                       <strong>{w.siteName}</strong>
-                      <br />
-                      <small className="live-muted">{w.roles.map(roleLabel).join(", ")}</small>
                     </span>
                   </span>
                   {busySite === w.siteId ? "Açılıyor…" : <ArrowRight size={16} />}

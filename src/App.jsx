@@ -44,7 +44,7 @@ import {
   initialAnnouncements,
   TODAY,
 } from "./prototype/data";
-import { getAuth, onAuthChange } from "./api/client";
+import { bootstrapSession, getAuth, onAuthChange } from "./api/client";
 import { can, getCurrentSite, listMembers, loadCurrentUser, logout, selectSite } from "./api/kovan";
 import ApartmentsLive from "./live/ApartmentsLive";
 import RolesLive from "./live/RolesLive";
@@ -52,7 +52,8 @@ import SiteSettingsLive from "./live/SiteSettingsLive";
 import InviteJoinModal from "./live/InviteJoinModal";
 import CreateSiteModal from "./live/CreateSiteModal";
 import { EmailVerifyBanner, SitePicker } from "./live/SessionScreens";
-import { fullName, roleLabel } from "./live/labels";
+import { Loading } from "./live/common";
+import { fullName } from "./live/labels";
 import "./App.css";
 
 function getInitials(name) {
@@ -123,6 +124,7 @@ function invitationTokenFromUrl() {
 
 export default function App() {
   const [theme, toggleTheme] = useTheme();
+  const [bootstrapping, setBootstrapping] = useState(true);
   const [auth, setAuthState] = useState(getAuth);
   const [inviteToken, setInviteToken] = useState(invitationTokenFromUrl);
   const [dues, setDues] = useState(initialDues);
@@ -150,6 +152,16 @@ export default function App() {
   const profileRef = useRef(null);
 
   useEffect(() => onAuthChange(setAuthState), []);
+
+  useEffect(() => {
+    let active = true;
+    bootstrapSession().finally(() => {
+      if (active) setBootstrapping(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (auth?.token && !auth?.user) {
@@ -180,7 +192,7 @@ export default function App() {
 
   const siteMeta = {
     name: site?.name || auth?.siteName || "Siteniz",
-    location: site ? `${site.district}, ${site.city}` : (auth?.roles || []).map(roleLabel).join(", "),
+    location: site ? `${site.district}, ${site.city}` : "",
     blockSummary: site ? `${site.blockCount} blok, ${site.unitCount} daire` : "",
   };
 
@@ -386,6 +398,14 @@ export default function App() {
     setRequests((prev) => [r, ...prev]);
     notify("Talebiniz başarıyla iletildi.");
   };
+
+  if (bootstrapping) {
+    return (
+      <main className="live-center">
+        <Loading text="Oturum kontrol ediliyor…" />
+      </main>
+    );
+  }
 
   // ---- Oturum yoksa: giriş, tanıtım; site seçilmediyse: site seçimi ------------------------------------
   if (!auth?.token || onboardingBusy) {
@@ -703,7 +723,7 @@ export default function App() {
                   <div className="user-profile-name-row">
                     <strong>{user.name}</strong>
                   </div>
-                  <small>{(auth.roles || []).map(roleLabel).join(", ")}</small>
+                  <small>{auth?.siteName || ""}</small>
                 </div>
                 <ChevronDown
                   size={14}
@@ -720,9 +740,11 @@ export default function App() {
                     <div className="header-meta">
                       <strong>{user.name}</strong>
                       <span className="header-email">{user.email}</span>
-                      <span className="header-role-badge">
-                        {(auth.roles || []).map(roleLabel).join(", ")}
-                      </span>
+                      {auth?.siteName && (
+                        <span className="header-role-badge">
+                          {auth.siteName}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -758,7 +780,7 @@ export default function App() {
                           </span>
                           <div className="profile-account-details">
                             <span className="profile-account-title">{auth.siteName}</span>
-                            <span className="profile-account-sub">{(auth.roles || []).map(roleLabel).join(", ")}</span>
+                            
                           </div>
                           <span className="profile-account-active-badge">
                             <CheckCircle2 size={14} />
@@ -777,7 +799,7 @@ export default function App() {
                             </span>
                             <div className="profile-account-details">
                               <span className="profile-account-title">{w.siteName}</span>
-                              <span className="profile-account-sub">{w.roles.map(roleLabel).join(", ")}</span>
+                              
                             </div>
                             <span className="profile-account-switch-hint">Geçiş Yap</span>
                           </button>
