@@ -84,7 +84,8 @@ export default function Apartments({
   const [testInviteModal, setTestInviteModal] = useState(null); // { email, unitId, isLocked }
 
   const copyBlockShareMessage = (targetBlock) => {
-    const msg = `Sayın Sakinimiz,\n${siteName} ${targetBlock} Blok dijital yönetim sistemimize katılmak için https://kovan.site adresine girip 'Sakin Katılım Kodu ile Kaydol' seçeneğine tıklayınız.\n\nBlok Katılım Kodunuz: KVN-BLOK-${targetBlock}\n\nDairenizi seçip ad, soyad, telefon ve şifrenizi belirleyerek kaydınızı anında tamamlayabilirsiniz.`;
+    const appUrl = typeof window !== "undefined" ? window.location.origin : "https://kovan-site.vercel.app";
+    const msg = `Sayın Sakinimiz,\n${siteName} ${targetBlock} Blok dijital yönetim sistemimize katılmak için ${appUrl} adresine girip 'Sakin Katılım Kodu ile Kaydol' seçeneğine tıklayınız.\n\nBlok Katılım Kodunuz: KVN-BLOK-${targetBlock}\n\nDairenizi seçip ad, soyad, telefon ve şifrenizi belirleyerek kaydınızı anında tamamlayabilirsiniz.`;
     navigator.clipboard?.writeText(msg);
     setCopiedId(`share-${targetBlock}`);
     setTimeout(() => setCopiedId(null), 2500);
@@ -746,7 +747,7 @@ export default function Apartments({
                 <div className="poster-steps">
                   <div className="poster-step-item">
                     <span className="step-num">1</span>
-                    <span><strong>kovan.site</strong> adresine gidin veya QR kodu tarayın</span>
+                    <span><strong>{typeof window !== "undefined" ? window.location.host : "kovan-site.vercel.app"}</strong> adresine gidin veya QR kodu tarayın</span>
                   </div>
                   <div className="poster-step-item">
                     <span className="step-num">2</span>
@@ -1124,6 +1125,7 @@ function BulkInvitationModal({
         .map((u) => {
           const res = residentFor(u.id);
           const code = `KVN-${u.id.replace("-", "")}`;
+          const appUrl = typeof window !== "undefined" ? window.location.origin : "https://kovan-site.vercel.app";
           return [
             u.id,
             u.block,
@@ -1131,7 +1133,7 @@ function BulkInvitationModal({
             u.type || "2+1",
             res?.name || "Boş Daire",
             code,
-            `https://kovan.site/davet/${code}`,
+            `${appUrl}/davet/${code}`,
             "7 Gün Geçerli",
           ];
         }),

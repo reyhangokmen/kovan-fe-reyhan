@@ -1,12 +1,8 @@
 // KOVAN backend ile konuşan tek yer. Oturum (token, seçili site, izinler) bellekte tutulur;
 // süresi dolan erişim token'ı bir kez yenilenir ve seçili site için yeniden yetki alınır.
 
-const isVercel = typeof window !== "undefined" && window.location.hostname.includes("vercel.app");
-const isWhitelistedVercel = typeof window !== "undefined" && window.location.hostname === "kovan-site.vercel.app";
-
 export const BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ||
-  (isVercel && !isWhitelistedVercel ? "" : "https://kovanbe.universeconn.online")
+  import.meta.env.VITE_API_BASE_URL || "https://kovanbe.universeconn.online"
 ).replace(/\/$/, "");
 
 const SITE_KEY = "kovan_selected_site";
@@ -126,16 +122,8 @@ export function onAuthChange(listener) {
   return () => listeners.delete(listener);
 }
 
-function getCsrfToken() {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)(?:XSRF-TOKEN|CSRF-TOKEN)=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
 export async function send(method, path, body, token, options = {}) {
   let response;
-  const csrfToken = getCsrfToken();
-  const isMutating = !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
 
   try {
     response = await fetch(BASE_URL + path, {
@@ -145,7 +133,6 @@ export async function send(method, path, body, token, options = {}) {
       headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(csrfToken && isMutating ? { "X-XSRF-TOKEN": csrfToken } : {}),
         ...options?.headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -173,7 +160,7 @@ let refreshing = null;
  * Refresh token HttpOnly çerezdedir; gövde gönderilmez.
  * Aynı anda birden fazla istek 401 alsa dahi yalnızca TEK BİR /auth/refresh isteği gider.
  */
-export function refreshSession() {
+export function refreshSession(retryOn401 = true) {
   if (refreshing) {
     return refreshing;
   }
@@ -183,8 +170,8 @@ export function refreshSession() {
     try {
       login = await send("POST", "/auth/refresh");
     } catch (err) {
-      // İki sekme aynı anda yenilerse biri 401 alabilir; 30 sn tolerans içinde bir kez tekrar denenir
-      if (err?.status === 401) {
+      // İki sekme aynı anda yenilerse biri 401 alabilir; retryOn401 true ise bir kez tekrar denenir
+      if (err?.status === 401 && retryOn401) {
         try {
           login = await send("POST", "/auth/refresh");
         } catch (retryErr) {
@@ -235,7 +222,7 @@ export function refreshSession() {
 
 export async function bootstrapSession() {
   try {
-    await refreshSession();
+    await refreshSession(false);
   } catch {
     setAuth(null);
   }
