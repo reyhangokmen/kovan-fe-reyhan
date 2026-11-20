@@ -70,8 +70,18 @@ export async function logout() {
   }
 }
 
-export const changePassword = (currentPassword, newPassword) =>
-  api("POST", "/auth/change-password", { currentPassword, newPassword });
+export async function changePassword(currentPassword, newPassword) {
+  const response = await api("POST", "/auth/change-password", { currentPassword, newPassword });
+  const current = getAuth();
+  updateAuth({
+    token: response.token,
+    workspaces: response.workspaces || current?.workspaces || [],
+  });
+  if (current?.siteId) {
+    await selectSite(current.siteId);
+  }
+  return response;
+}
 
 export const forgotPassword = (email) => publicApi("POST", "/auth/forgot-password", { email: email.trim() });
 

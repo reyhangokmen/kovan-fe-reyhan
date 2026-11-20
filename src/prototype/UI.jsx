@@ -160,7 +160,7 @@ export function Modal({ title, description, children, onClose }) {
     </dialog>
   );
 }
-export function Field({ label, required, children }) {
+export function Field({ label, required, error, children }) {
   return (
     <label className="field">
       <span>
@@ -172,6 +172,11 @@ export function Field({ label, required, children }) {
         )}
       </span>
       {children}
+      {error && (
+        <span className="field-error-msg" style={{ color: "#ef4444", fontSize: "12px", marginTop: "4px", display: "block", fontWeight: "500" }}>
+          {error}
+        </span>
+      )}
     </label>
   );
 }

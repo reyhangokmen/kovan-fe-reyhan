@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Badge, Button, Panel, Stat, TextLink } from "./UI";
 import { dateLabel, money, monthLabel, PERIOD } from "./data";
+import { DemoBanner } from "../live/common";
 export default function Dashboard({
   manager,
   user,
@@ -77,17 +78,18 @@ export default function Dashboard({
           <span>{todayFormatted}</span>
         </div>
       </div>
+      <DemoBanner>Bu bölüm henüz geliştiriliyor; buradaki bilgiler örnektir ve kaydedilmez.</DemoBanner>
       <div className={`stats-grid ${manager ? "" : "resident-stats"}`}>
         {manager ? (
           <>
             <Stat
               icon={Building2}
               label="Toplam daire"
-              value={siteStats ? siteStats.unitCount : units.length}
+              value={siteStats ? siteStats.unitCount : "—"}
               note={
                 siteStats
                   ? `${siteStats.occupiedCount ?? "—"} dolu daire · ${siteStats.blockCount} blok`
-                  : `${units.filter((u) => u.occupied).length} dolu daire · 3 blok`
+                  : "—"
               }
             />
             <Stat

@@ -235,7 +235,7 @@ export async function api(method, path, body) {
   try {
     return await send(method, path, body, initialToken);
   } catch (error) {
-    if (error.status !== 401 || !initialToken) throw error;
+    if (error.status !== 401 || !initialToken || error.code === "ACCOUNT_LOCKED") throw error;
 
     // Merkezi yenilemeyi çağır (aynı anda gelen tüm 401 istekleri TEK bir refresh bekler)
     try {

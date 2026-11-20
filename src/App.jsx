@@ -188,6 +188,9 @@ export default function App() {
   const user = {
     name: fullName(auth?.user),
     email: auth?.user?.email || "",
+    firstName: auth?.user?.firstName || "",
+    lastName: auth?.user?.lastName || "",
+    phone: auth?.user?.phone || "",
   };
 
   const siteMeta = {
@@ -912,6 +915,7 @@ export default function App() {
             ) : (
               <ResidentSettings
                 user={user}
+                currentUser={auth?.user}
                 session={{ unitId: userUnitId || "" }}
                 units={initialUnits}
                 onNotify={notify}

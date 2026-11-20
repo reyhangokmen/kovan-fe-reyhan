@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   User,
   Car,
@@ -22,11 +22,13 @@ import {
   Moon,
 } from "lucide-react";
 import { Button, Field, Panel, Modal } from "./UI";
-import { updateProfile, requestPhoneChangeCode, verifyPhoneChange } from "../api/kovan";
-import { errorMessage } from "../api/client";
+import { updateProfile, requestPhoneChangeCode, verifyPhoneChange, changePassword, loadCurrentUser } from "../api/kovan";
+import { getAuth, updateAuth, errorMessage } from "../api/client";
+import { DemoBanner } from "../live/common";
 
 export default function ResidentSettings({
   user,
+  currentUser,
   session,
   units = [],
   onNotify,
@@ -46,29 +48,55 @@ export default function ResidentSettings({
     m2: "-",
   };
 
-  // 1. Profil & İletişim Durumları
+  const authUser = currentUser || getAuth()?.user;
+  const [firstName, setFirstName] = useState(authUser?.firstName || user?.firstName || "");
+  const [lastName, setLastName] = useState(authUser?.lastName || user?.lastName || "");
+  const [verifiedPhone, setVerifiedPhone] = useState(authUser?.phone || user?.phone || "");
+  const [email, setEmail] = useState(authUser?.email || user?.email || "");
+
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileFieldErrors, setProfileFieldErrors] = useState({});
+
+  useEffect(() => {
+    loadCurrentUser()
+      .then((curr) => {
+        if (curr) {
+          if (curr.firstName) setFirstName(curr.firstName);
+          if (curr.lastName) setLastName(curr.lastName);
+          if (curr.phone !== undefined) setVerifiedPhone(curr.phone || "");
+          if (curr.email) setEmail(curr.email);
+        }
+      })
+      .catch(() => null);
+  }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.firstName && !firstName) setFirstName(currentUser.firstName);
+      if (currentUser.lastName && !lastName) setLastName(currentUser.lastName);
+      if (currentUser.phone !== undefined && !verifiedPhone) setVerifiedPhone(currentUser.phone || "");
+      if (currentUser.email && !email) setEmail(currentUser.email);
+    }
+  }, [currentUser]);
+
+  // 1. Profil & İletişim Durumları (Örnek Kişisel Veriler Boş Başlatılır)
   const [profileData, setProfileData] = useState({
-    name: user?.name || "Ahmet Yılmaz",
-    email: user?.email || "ahmet.yilmaz@site.com",
-    phone: user?.phone || "0532 555 12 34",
     role: "Kat Maliki (Ev Sahibi)",
-    residentCount: "3", // Dairede ikamet eden toplam kişi sayısı
-    hasPet: true,
-    petCount: "1", // Evcil hayvan sayısı
-    petDetails: "1 Kedi",
-    // Afet & Acil Durum Tahliye Önceliği (Yatağa Bağlı Hasta / Özel İhtiyaç)
+    residentCount: "",
+    hasPet: false,
+    petCount: "",
+    petDetails: "",
     hasBedriddenPatient: false,
-    bedriddenCount: "1",
+    bedriddenCount: "",
     disasterEvacuationNote: "",
-    // Acil Durum İletişimi
-    emergencyName: "Zeynep Yılmaz",
-    emergencyRelation: "Eşi",
-    emergencyPhone: "0533 444 55 66",
-    emergencyNote: "7/24 Aranabilir (1. Derece Yakın)",
+    emergencyName: "",
+    emergencyRelation: "",
+    emergencyPhone: "",
+    emergencyNote: "",
   });
 
   // İki Adımlı Telefon Değişikliği Durumları (BMS-83 & Mobil Bağlantı)
-  const [verifiedPhone, setVerifiedPhone] = useState(user?.phone || profileData.phone || "0532 555 12 34");
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [pendingPhone, setPendingPhone] = useState("");
   const [phoneCode, setPhoneCode] = useState("");
@@ -76,7 +104,7 @@ export default function ResidentSettings({
   const [phoneBusy, setPhoneBusy] = useState(false);
   const [phoneError, setPhoneError] = useState("");
 
-  // 1. Adım: Yeni telefon için kod iste (POST /auth/me/phone/code)
+  // 1. Adım: Yeni telefon için kod iste (POST /auth/me/phone-verification-code)
   const handleRequestPhoneCode = async (e) => {
     e?.preventDefault();
     const cleanPhone = (pendingPhone || "").trim();
@@ -89,7 +117,7 @@ export default function ResidentSettings({
     try {
       await requestPhoneChangeCode(cleanPhone);
       setPhoneStep(2);
-      onNotify?.(`${user?.email || profileData.email} adresinize 6 haneli doğrulama kodu gönderildi (5 dakika geçerlidir).`);
+      onNotify?.(`${email || user?.email} adresinize 6 haneli doğrulama kodu gönderildi (5 dakika geçerlidir).`);
     } catch (err) {
       if (err.fieldErrors?.length) {
         setPhoneError(err.fieldErrors.map((f) => f.message).join(" · "));
@@ -101,7 +129,7 @@ export default function ResidentSettings({
     }
   };
 
-  // 2. Adım: Kodu onayla ve numarayı güncelle (POST /auth/me/phone)
+  // 2. Adım: Kodu onayla ve numarayı güncelle (POST /auth/me/verify-phone)
   const handleVerifyPhoneCode = async (e) => {
     e?.preventDefault();
     const cleanCode = (phoneCode || "").trim();
@@ -114,7 +142,7 @@ export default function ResidentSettings({
     try {
       await verifyPhoneChange(pendingPhone, cleanCode);
       setVerifiedPhone(pendingPhone);
-      setProfileData((prev) => ({ ...prev, phone: pendingPhone }));
+      await loadCurrentUser().catch(() => null);
       setShowPhoneModal(false);
       setPhoneStep(1);
       setPhoneCode("");
@@ -132,10 +160,8 @@ export default function ResidentSettings({
     }
   };
 
-  // 2. Araç & Plaka Listesi (PTS İçin)
-  const [vehicles, setVehicles] = useState([
-    { id: 1, plate: "34 BJK 1903", brand: "Volkswagen Golf", color: "Beyaz" },
-  ]);
+  // 2. Araç & Plaka Listesi (PTS İçin - Boş Başlatılır)
+  const [vehicles, setVehicles] = useState([]);
   const [newPlate, setNewPlate] = useState("");
   const [newBrand, setNewBrand] = useState("");
   const [newColor, setNewColor] = useState("");
@@ -159,20 +185,51 @@ export default function ResidentSettings({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordMsg, setPasswordMsg] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState({});
+  const [passwordSuccess, setPasswordSuccess] = useState("");
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+    setProfileSaving(true);
+    setProfileError("");
+    setProfileFieldErrors({});
+
     try {
-      // Backend kuralı: PUT /auth/me'ye yeni numara gönderilmez;
-      // phone alanına mevcut numarayı ya da null gönderilir.
-      await updateProfile({
-        name: profileData.name,
-        phone: verifiedPhone || null,
-      }).catch(() => null);
+      // Backend kuralı: PUT /auth/me { firstName, lastName, phone }
+      // firstName ve lastName zorunlu, en fazla 100 karakter.
+      // phone null giderse kayıtlı telefon silinir; yalnız mevcut verifiedPhone gönderilebilir.
+      const cleanFirst = firstName.trim();
+      const cleanLast = lastName.trim();
+      const cleanPhone = verifiedPhone ? verifiedPhone.trim() : null;
+
+      const updated = await updateProfile({
+        firstName: cleanFirst,
+        lastName: cleanLast,
+        phone: cleanPhone,
+      });
+
+      if (updated) {
+        updateAuth({ user: updated });
+        setFirstName(updated.firstName || "");
+        setLastName(updated.lastName || "");
+        setVerifiedPhone(updated.phone || "");
+      } else {
+        await loadCurrentUser().catch(() => null);
+      }
       onNotify?.("Hesap ve profil bilgileriniz başarıyla güncellendi.");
     } catch (err) {
-      onNotify?.(errorMessage(err));
+      if (err.fieldErrors?.length) {
+        const errors = {};
+        err.fieldErrors.forEach((f) => {
+          if (f.field) errors[f.field] = f.message;
+        });
+        setProfileFieldErrors(errors);
+      }
+      setProfileError(err.detail || errorMessage(err));
+    } finally {
+      setProfileSaving(false);
     }
   };
 
@@ -201,21 +258,41 @@ export default function ResidentSettings({
     onNotify?.(`${plate} plakalı araç kaydı silindi.`);
   };
 
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = async (e) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      setPasswordMsg("Yeni şifre en az 6 karakter olmalıdır.");
+    setPasswordError("");
+    setPasswordFieldErrors({});
+    setPasswordSuccess("");
+
+    if (newPassword.length < 8) {
+      setPasswordError("Yeni şifre en az 8 karakter olmalıdır.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordMsg("Girdiğiniz yeni şifreler eşleşmiyor.");
+      setPasswordError("Girdiğiniz yeni şifreler eşleşmiyor.");
       return;
     }
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setPasswordMsg("");
-    onNotify?.("Giriş şifreniz başarıyla değiştirildi.");
+
+    setPasswordBusy(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordSuccess("Giriş şifreniz başarıyla değiştirildi.");
+      onNotify?.("Giriş şifreniz başarıyla değiştirildi.");
+    } catch (err) {
+      if (err.fieldErrors?.length) {
+        const errors = {};
+        err.fieldErrors.forEach((f) => {
+          if (f.field) errors[f.field] = f.message;
+        });
+        setPasswordFieldErrors(errors);
+      }
+      setPasswordError(err.detail || errorMessage(err));
+    } finally {
+      setPasswordBusy(false);
+    }
   };
 
   return (
@@ -313,28 +390,59 @@ export default function ResidentSettings({
                 </div>
               </div>
 
+              {profileError && (
+                <div style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "8px", padding: "10px 14px", color: "#ef4444", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <AlertCircle size={16} />
+                  <span>{profileError}</span>
+                </div>
+              )}
+
               <div className="grid-2-col">
-                <Field label="Ad Soyad">
+                <Field label="Ad" required error={profileFieldErrors.firstName}>
                   <input
                     required
-                    value={profileData.name}
-                    onChange={(e) =>
-                      setProfileData({ ...profileData, name: e.target.value })
-                    }
+                    maxLength={100}
+                    value={firstName}
+                    onChange={(e) => {
+                      setFirstName(e.target.value);
+                      if (profileFieldErrors.firstName) setProfileFieldErrors((prev) => ({ ...prev, firstName: null }));
+                    }}
+                    placeholder="Adınız"
                   />
                 </Field>
+                <Field label="Soyad" required error={profileFieldErrors.lastName}>
+                  <input
+                    required
+                    maxLength={100}
+                    value={lastName}
+                    onChange={(e) => {
+                      setLastName(e.target.value);
+                      if (profileFieldErrors.lastName) setProfileFieldErrors((prev) => ({ ...prev, lastName: null }));
+                    }}
+                    placeholder="Soyadınız"
+                  />
+                </Field>
+              </div>
+
+              <div className="grid-2-col">
                 <div className="field">
                   <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span>Cep Telefonu</span>
-                    <span style={{ fontSize: "11px", color: "#16a34a", fontWeight: "600", display: "inline-flex", alignItems: "center", gap: "3px" }}>
-                      <CheckCircle2 size={12} /> Doğrulanmış
-                    </span>
+                    {verifiedPhone ? (
+                      <span style={{ fontSize: "11px", color: "#16a34a", fontWeight: "600", display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                        <CheckCircle2 size={12} /> Kayıtlı
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: "11px", color: "var(--muted)" }}>
+                        Numara Yok
+                      </span>
+                    )}
                   </label>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     <input
                       type="tel"
                       readOnly
-                      value={verifiedPhone}
+                      value={verifiedPhone || "—"}
                       style={{ cursor: "not-allowed", opacity: 0.9, background: "var(--page)" }}
                       title="Telefon değişikliği iki adımlı güvenlik doğrulaması (e-posta onay kodu) ile yapılmaktadır."
                     />
@@ -353,37 +461,30 @@ export default function ResidentSettings({
                       <Phone size={14} /> Değiştir
                     </Button>
                   </div>
+                  {profileFieldErrors.phone && (
+                    <span style={{ color: "#ef4444", fontSize: "12px", marginTop: "4px", display: "block" }}>
+                      {profileFieldErrors.phone}
+                    </span>
+                  )}
                   <small style={{ fontSize: "11px", color: "var(--muted)", marginTop: "4px", display: "block" }}>
                     Telefon değişikliği e-posta onay kodu ile 2 adımlı doğrulamayla yapılır.
                   </small>
                 </div>
                 <Field label="E-posta Adresi">
                   <input
-                    required
+                    readOnly
                     type="email"
-                    value={profileData.email}
-                    onChange={(e) =>
-                      setProfileData({ ...profileData, email: e.target.value })
-                    }
+                    value={email || "—"}
+                    style={{ cursor: "not-allowed", opacity: 0.9, background: "var(--page)" }}
+                    title="E-posta adresi değiştirilemez."
                   />
-                </Field>
-                <Field label="İkamet & Mülkiyet Durumu">
-                  <select
-                    value={profileData.role}
-                    onChange={(e) =>
-                      setProfileData({ ...profileData, role: e.target.value })
-                    }
-                  >
-                    <option value="Kat Maliki (Ev Sahibi)">Kat Maliki (Ev Sahibi)</option>
-                    <option value="Kiracı">Kiracı</option>
-                    <option value="Aile Bireyi / Sakin">Aile Bireyi / Sakin</option>
-                  </select>
                 </Field>
               </div>
 
               {/* Dairede Yaşam & Afet Tahliye Özeti (KVKK Uyumlu Sayısal Alan) */}
               <div className="settings-sub-section">
                 <h4>Daire İkamet & Yaşam Bilgisi</h4>
+                <DemoBanner>Bu bölüm henüz geliştiriliyor; buradaki bilgiler örnektir ve kaydedilmez.</DemoBanner>
                 <p className="text-xs text-muted mt-1">
                   Kişisel Verilerin Korunması Kanunu (KVKK) uyarınca aile bireylerinin şahsi kimlik verileri toplanmaz; yalnızca bina yoğunluğu ve afet tahliyesi için sayısal bilgi tutulur.
                 </p>
@@ -466,6 +567,7 @@ export default function ResidentSettings({
                   </div>
                   <span className="badge warning">Site Yöneticisi Görür</span>
                 </div>
+                <DemoBanner>Bu bölüm henüz geliştiriliyor; buradaki bilgiler örnektir ve kaydedilmez.</DemoBanner>
                 <p className="text-xs text-muted mt-1">
                   Olası deprem, yangın veya afet durumunda AFAD ve site yönetiminin acil müdahale planında öncelikli tahliye edilmesi gereken yatağa bağımlı hasta veya özel gereksinimli birey kaydı:
                 </p>
@@ -480,7 +582,7 @@ export default function ResidentSettings({
                           ...profileData,
                           hasBedriddenPatient: isEvet,
                           disasterEvacuationNote: isEvet
-                            ? profileData.disasterEvacuationNote || "Yatağa bağımlı solunum cihazı kullanıyor, sedye tahliyesi gerekir."
+                            ? profileData.disasterEvacuationNote || ""
                             : "",
                         });
                       }}
@@ -537,13 +639,14 @@ export default function ResidentSettings({
               {/* Acil Durum İletişimi */}
               <div className="settings-sub-section">
                 <h4>Acil Durum İrtibat Kişisi (Yangın, Su Basması, Kaza vb.)</h4>
+                <DemoBanner>Bu bölüm henüz geliştiriliyor; buradaki bilgiler örnektir ve kaydedilmez.</DemoBanner>
                 <p className="text-xs text-muted mt-1">
                   Size ulaşılamadığı acil durumlarda site yönetiminin ve güvenliğin arayabileceği yakınınız:
                 </p>
                 <div className="grid-2-col mt-2">
                   <Field label="Yakın Adı Soyadı">
                     <input
-                      required
+                      placeholder="Örn: Yakınınızın adı"
                       value={profileData.emergencyName}
                       onChange={(e) =>
                         setProfileData({
@@ -555,7 +658,6 @@ export default function ResidentSettings({
                   </Field>
                   <Field label="Yakınlık Derecesi">
                     <input
-                      required
                       placeholder="Örn: Eşi, Kardeşi, Komşusu"
                       value={profileData.emergencyRelation}
                       onChange={(e) =>
@@ -568,8 +670,8 @@ export default function ResidentSettings({
                   </Field>
                   <Field label="Acil Durum Telefonu">
                     <input
-                      required
                       type="tel"
+                      placeholder="05XXXXXXXXX"
                       value={profileData.emergencyPhone}
                       onChange={(e) =>
                         setProfileData({
@@ -621,8 +723,8 @@ export default function ResidentSettings({
               </div>
 
               <div className="settings-footer-actions">
-                <Button type="submit">
-                  <Save size={16} /> Profil Bilgilerini Kaydet
+                <Button type="submit" disabled={profileSaving}>
+                  <Save size={16} /> {profileSaving ? "Kaydediliyor..." : "Profil Bilgilerini Kaydet"}
                 </Button>
               </div>
             </div>
@@ -636,6 +738,7 @@ export default function ResidentSettings({
           title="Kayıtlı Araçlarım & Otopark Bariyer Tanımı"
           subtitle="Site giriş bariyerinden otomatik geçebilmeniz için Plaka Tanıma Sistemi (PTS) araç kaydı"
         >
+          <DemoBanner>Bu bölüm henüz geliştiriliyor; buradaki bilgiler örnektir ve kaydedilmez.</DemoBanner>
           <div className="settings-grid">
             <div className="flex items-center justify-between">
               <div>
@@ -733,6 +836,7 @@ export default function ResidentSettings({
           title="Kişisel Bildirim Tercihleri"
           subtitle="SMS, E-posta ve mobil bildirimlerin hangi durumlarda iletileceğini belirleyin"
         >
+          <DemoBanner>Bu bölüm henüz geliştiriliyor; buradaki bilgiler örnektir ve kaydedilmez.</DemoBanner>
           <div className="settings-grid">
             <div className="settings-card-box">
               <strong className="text-xs font-semibold">Aidat & Finans Bildirimleri</strong>
@@ -850,26 +954,46 @@ export default function ResidentSettings({
               subtitle="Hesabınızın güvenliği için güçlü bir şifre kullanın"
             >
               <div className="settings-grid">
-                <Field label="Mevcut Şifreniz">
+                {passwordError && (
+                  <div className="auth-error-msg" style={{ display: "flex", alignItems: "center", gap: "8px", color: "#ef4444", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "8px", padding: "10px 14px", fontSize: "13px" }}>
+                    <AlertCircle size={16} /> <span>{passwordError}</span>
+                  </div>
+                )}
+                {passwordSuccess && (
+                  <div className="auth-success-msg" style={{ display: "flex", alignItems: "center", gap: "8px", color: "#10b981", background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "8px", padding: "10px 14px", fontSize: "13px" }}>
+                    <CheckCircle2 size={16} /> <span>{passwordSuccess}</span>
+                  </div>
+                )}
+                <Field label="Mevcut Şifreniz" required error={passwordFieldErrors.currentPassword}>
                   <input
                     type="password"
                     required
                     placeholder="Mevcut şifrenizi girin"
                     value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    onChange={(e) => {
+                      setCurrentPassword(e.target.value);
+                      if (passwordFieldErrors.currentPassword) {
+                        setPasswordFieldErrors((prev) => ({ ...prev, currentPassword: null }));
+                      }
+                    }}
                   />
                 </Field>
                 <div className="grid-2-col">
-                  <Field label="Yeni Şifre">
+                  <Field label="Yeni Şifre" required error={passwordFieldErrors.newPassword}>
                     <input
                       type="password"
                       required
-                      placeholder="En az 6 karakter"
+                      placeholder="En az 8 karakter"
                       value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        if (passwordFieldErrors.newPassword) {
+                          setPasswordFieldErrors((prev) => ({ ...prev, newPassword: null }));
+                        }
+                      }}
                     />
                   </Field>
-                  <Field label="Yeni Şifre (Tekrar)">
+                  <Field label="Yeni Şifre (Tekrar)" required>
                     <input
                       type="password"
                       required
@@ -879,13 +1003,10 @@ export default function ResidentSettings({
                     />
                   </Field>
                 </div>
-                {passwordMsg && (
-                  <div className="auth-error-msg">
-                    <AlertCircle size={15} /> {passwordMsg}
-                  </div>
-                )}
                 <div className="flex justify-end">
-                  <Button type="submit">Şifreyi Güncelle</Button>
+                  <Button type="submit" disabled={passwordBusy}>
+                    {passwordBusy ? "Güncelleniyor..." : "Şifreyi Güncelle"}
+                  </Button>
                 </div>
               </div>
             </Panel>
@@ -896,6 +1017,7 @@ export default function ResidentSettings({
             title="Kişisel Veri Gizliliği (KVKK Tercihleri)"
             subtitle="Diğer kat malikleri ve komşularınızın görebileceği bilgileri sınırlandırın"
           >
+            <DemoBanner>Bu bölüm henüz geliştiriliyor; buradaki bilgiler örnektir ve kaydedilmez.</DemoBanner>
             <div className="settings-grid">
               <label className="checkbox-item-custom">
                 <input
